@@ -36,8 +36,9 @@
 					</router-link>
 					<CertificationLinks :courseName="course.data.name" class="w-full" />
 				</div>
+				<!-- Show Buy button only for non-admin and non-instructor of this course -->
 				<router-link
-					v-else-if="course.data.paid_course"
+					v-else-if="course.data.paid_course && !user.data?.is_admin && !is_instructor()"
 					:to="{
 						name: 'Billing',
 						params: {
@@ -55,6 +56,21 @@
 						</span>
 					</Button>
 				</router-link>
+				<!-- Admin or Instructor can start directly -->
+				<Button
+					v-else-if="(user.data?.is_admin || is_instructor()) && !course.data.membership"
+					@click="enrollStudent()"
+					variant="solid"
+					class="w-full"
+					size="md"
+				>
+					<template #prefix>
+						<BookText class="size-4 stroke-1.5" />
+					</template>
+					<span>
+						{{ user.data?.is_admin ? __('Start Learning (Admin)') : __('Start Learning') }}
+					</span>
+				</Button>
 				<Badge
 					v-else-if="course.data.disable_self_learning"
 					theme="blue"

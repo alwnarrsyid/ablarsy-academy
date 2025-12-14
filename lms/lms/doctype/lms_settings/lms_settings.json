@@ -323,8 +323,9 @@
   },
   {
    "fieldname": "payment_gateway",
-   "fieldtype": "Data",
-   "label": "Payment Gateway"
+   "fieldtype": "Select",
+   "label": "Payment Gateway",
+   "options": "\nMidtrans\nRazorpay\nStripe"
   },
   {
    "fieldname": "no_payments_app",

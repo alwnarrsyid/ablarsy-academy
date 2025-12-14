@@ -27,6 +27,7 @@
   "column_break_hlqw",
   "instructors",
   "zoom_account",
+  "google_meet_account",
   "section_break_rgfj",
   "medium",
   "category",
@@ -361,6 +362,12 @@
    "fieldtype": "Link",
    "label": "Zoom Account",
    "options": "LMS Zoom Settings"
+  },
+  {
+   "fieldname": "google_meet_account",
+   "fieldtype": "Link",
+   "label": "Google Meet Account",
+   "options": "LMS Google Meet Settings"
   }
  ],
  "grid_page_length": 50,

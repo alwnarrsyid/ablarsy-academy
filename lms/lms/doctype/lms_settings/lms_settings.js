@@ -7,8 +7,22 @@ frappe.ui.form.on("LMS Settings", {
 			method: "lms.lms.doctype.lms_settings.lms_settings.check_payments_app",
 			callback: (data) => {
 				if (!data.message) {
-					frm.set_df_property("payment_section", "hidden", 1);
-					frm.trigger("set_no_payments_app_html");
+					// Check if Midtrans is enabled as an alternative
+					frappe.call({
+						method: "lms.lms.doctype.midtrans_settings.midtrans_settings.is_midtrans_enabled",
+						callback: (midtrans_data) => {
+							if (!midtrans_data.message) {
+								frm.set_df_property("payment_section", "hidden", 1);
+								frm.trigger("set_no_payments_app_html");
+							} else {
+								frm.set_df_property("no_payments_app", "hidden", 1);
+							}
+						},
+						error: () => {
+							frm.set_df_property("payment_section", "hidden", 1);
+							frm.trigger("set_no_payments_app_html");
+						}
+					});
 				} else {
 					frm.set_df_property("no_payments_app", "hidden", 1);
 				}
@@ -21,6 +35,7 @@ frappe.ui.form.on("LMS Settings", {
 				<div class="alert alert-warning">
 					Please install the
 					<a target="_blank" style="text-decoration: underline; color: var(--alert-text-warning); background: var(--alert-bg-warning);" href="https://frappecloud.com/marketplace/apps/payments">Payments app</a>
+					 or enable <a href="/app/midtrans-settings" style="text-decoration: underline; color: var(--alert-text-warning); background: var(--alert-bg-warning);">Midtrans</a>
 					 to enable payment gateway. Refer to the
 					 <a target="_blank" style="text-decoration: underline; color: var(--alert-text-warning); background: var(--alert-bg-warning);" href="https://docs.frappe.io/learning/setting-up-payment-gateway">Documentation</a>
 					 for more information.
@@ -28,3 +43,4 @@ frappe.ui.form.on("LMS Settings", {
 			`);
 	},
 });
+

@@ -53,7 +53,13 @@ export function formatNumber(number) {
 
 export function formatNumberIntoCurrency(number, currency) {
 	if (number) {
-		return number.toLocaleString('en-IN', {
+		// Custom format for IDR - put Rp in front with dot as thousand separator
+		if (currency === 'IDR') {
+			const formatted = number.toLocaleString('de-DE', { maximumFractionDigits: 0 })
+			return `Rp${formatted}`
+		}
+		// Default format for other currencies
+		return number.toLocaleString('en-US', {
 			maximumFractionDigits: 0,
 			style: 'currency',
 			currency: currency,

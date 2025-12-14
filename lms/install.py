@@ -7,12 +7,14 @@ from lms.lms.api import give_discussions_permission
 def after_install():
 	create_batch_source()
 	give_discussions_permission()
+	create_idr_currency()
 
 
 def after_sync():
 	create_lms_roles()
 	set_default_certificate_print_format()
 	give_lms_roles_to_admin()
+	create_idr_currency()
 
 
 def before_uninstall():
@@ -185,3 +187,22 @@ def give_lms_roles_to_admin():
 			doc.parentfield = "roles"
 			doc.role = role
 			doc.save()
+
+
+def create_idr_currency():
+	"""Create Indonesian Rupiah (IDR) currency if it doesn't exist."""
+	if not frappe.db.exists("Currency", "IDR"):
+		currency = frappe.new_doc("Currency")
+		currency.update({
+			"currency_name": "Indonesian Rupiah",
+			"name": "IDR",
+			"enabled": 1,
+			"symbol": "Rp",
+			"fraction": "Sen",
+			"fraction_units": 100,
+			"smallest_currency_fraction_value": 1,
+			"number_format": "#.###",
+			"symbol_on_right": 0
+		})
+		currency.insert(ignore_permissions=True)
+		frappe.db.commit()

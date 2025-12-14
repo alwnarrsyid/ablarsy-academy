@@ -213,6 +213,181 @@ def authenticate(zoom_account):
 
 
 @frappe.whitelist()
+def create_google_meet_live_class(
+	batch_name,
+	google_meet_account,
+	title,
+	duration,
+	date,
+	time,
+	timezone,
+	auto_recording=None,
+	description=None,
+):
+	"""Create a live class using Google Meet via Google Calendar API"""
+	from datetime import datetime, timedelta
+
+	gmeet_settings = frappe.get_doc("LMS Google Meet Settings", google_meet_account)
+	if not gmeet_settings.enabled:
+		frappe.throw(_("Please enable the Google Meet account to use this feature."))
+
+	if not gmeet_settings.google_calendar:
+		frappe.throw(_("Please select a Google Calendar for this Google Meet account."))
+
+	# Get the Google Calendar document
+	google_calendar = frappe.get_doc("Google Calendar", gmeet_settings.google_calendar)
+
+	# Check if calendar is authorized
+	if not google_calendar.get("authorization_code") and not google_calendar.get("refresh_token"):
+		frappe.throw(_("Google Calendar is not authorized. Please authorize Google Calendar first."))
+
+	# Create event with Google Meet conferencing
+	try:
+		google_meet_link = create_google_calendar_event_with_meet(
+			google_calendar=google_calendar,
+			title=title,
+			description=description or "",
+			date=date,
+			time=time,
+			duration=int(duration),
+			timezone=timezone,
+		)
+	except Exception as e:
+		frappe.log_error(f"Google Meet creation error: {str(e)}")
+		frappe.throw(_("Error creating Google Meet. Please try again. {0}").format(str(e)))
+
+	# Create LMS Live Class document
+	class_doc = frappe.get_doc({
+		"doctype": "LMS Live Class",
+		"title": title,
+		"host": frappe.session.user,
+		"meeting_platform": "Google Meet",
+		"google_meet_account": google_meet_account,
+		"google_meet_link": google_meet_link,
+		"join_url": google_meet_link,
+		"date": date,
+		"time": time,
+		"duration": duration,
+		"timezone": timezone,
+		"batch_name": batch_name,
+		"description": description,
+		"auto_recording": auto_recording or "No Recording",
+	})
+	class_doc.insert()
+
+	return class_doc
+
+
+def create_google_calendar_event_with_meet(google_calendar, title, description, date, time, duration, timezone):
+	"""Create a Google Calendar event with Google Meet conferencing"""
+	from datetime import datetime, timedelta
+	import json
+
+	# Get access token
+	access_token = get_google_calendar_access_token(google_calendar)
+
+	# Parse date and time
+	start_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M:%S")
+	end_datetime = start_datetime + timedelta(minutes=int(duration))
+
+	# Format for Google Calendar API
+	start_iso = start_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+	end_iso = end_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+
+	# Create event payload with conferencing
+	event_payload = {
+		"summary": title,
+		"description": description,
+		"start": {
+			"dateTime": start_iso,
+			"timeZone": timezone or "UTC"
+		},
+		"end": {
+			"dateTime": end_iso,
+			"timeZone": timezone or "UTC"
+		},
+		"conferenceData": {
+			"createRequest": {
+				"requestId": frappe.generate_hash(length=16),
+				"conferenceSolutionKey": {
+					"type": "hangoutsMeet"
+				}
+			}
+		}
+	}
+
+	# Make API request
+	headers = {
+		"Authorization": f"Bearer {access_token}",
+		"Content-Type": "application/json"
+	}
+
+	calendar_id = google_calendar.google_calendar_id or "primary"
+	url = f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events?conferenceDataVersion=1"
+
+	response = requests.post(url, headers=headers, data=json.dumps(event_payload))
+
+	if response.status_code not in [200, 201]:
+		frappe.throw(_("Failed to create Google Calendar event: {0}").format(response.text))
+
+	data = response.json()
+
+	# Extract Google Meet link
+	conference_data = data.get("conferenceData", {})
+	entry_points = conference_data.get("entryPoints", [])
+
+	meet_link = None
+	for entry_point in entry_points:
+		if entry_point.get("entryPointType") == "video":
+			meet_link = entry_point.get("uri")
+			break
+
+	if not meet_link:
+		# Fallback to hangoutLink
+		meet_link = data.get("hangoutLink")
+
+	if not meet_link:
+		frappe.throw(_("Failed to get Google Meet link from the created event."))
+
+	return meet_link
+
+
+def get_google_calendar_access_token(google_calendar):
+	"""Get access token for Google Calendar API"""
+	from frappe.integrations.doctype.google_settings.google_settings import get_auth_url
+
+	# Check if we have a refresh token
+	if not google_calendar.get("refresh_token"):
+		frappe.throw(_("Google Calendar is not authorized. Please re-authorize."))
+
+	# Get Google Settings
+	google_settings = frappe.get_single("Google Settings")
+
+	if not google_settings.client_id or not google_settings.get_password("client_secret"):
+		frappe.throw(_("Please configure Google Settings with Client ID and Client Secret."))
+
+	# Refresh the access token
+	token_url = "https://oauth2.googleapis.com/token"
+
+	payload = {
+		"client_id": google_settings.client_id,
+		"client_secret": google_settings.get_password("client_secret"),
+		"refresh_token": google_calendar.get_password("refresh_token"),
+		"grant_type": "refresh_token"
+	}
+
+	response = requests.post(token_url, data=payload)
+
+	if response.status_code != 200:
+		frappe.throw(_("Failed to refresh Google access token: {0}").format(response.text))
+
+	data = response.json()
+	return data.get("access_token")
+
+
+
+
+@frappe.whitelist()
 def get_batch_timetable(batch):
 	timetable = frappe.get_all(
 		"LMS Batch Timetable",

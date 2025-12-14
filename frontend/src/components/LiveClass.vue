@@ -1,11 +1,11 @@
 <template>
 	<div
-		v-if="hasPermission() && !props.zoomAccount"
+		v-if="hasPermission() && !hasMeetingAccount()"
 		class="flex items-center space-x-2 mb-5 bg-surface-amber-1 py-1 px-2 rounded-md text-ink-amber-3 text-xs"
 	>
 		<AlertCircle class="size-4 stroke-1.5" />
 		<span>
-			{{ __('Please add a zoom account to the batch to create live classes.') }}
+			{{ __('Please add a Zoom or Google Meet account to the batch to create live classes.') }}
 		</span>
 	</div>
 
@@ -38,8 +38,17 @@
 				}
 			"
 		>
-			<div class="font-semibold text-ink-gray-9 text-lg mb-1">
-				{{ cls.title }}
+			<div class="flex items-center gap-2 mb-1">
+				<div class="font-semibold text-ink-gray-9 text-lg">
+					{{ cls.title }}
+				</div>
+				<span
+					v-if="cls.meeting_platform"
+					class="text-xs px-2 py-0.5 rounded-full"
+					:class="cls.meeting_platform === 'Google Meet' ? 'bg-surface-green-1 text-ink-green-3' : 'bg-surface-blue-1 text-ink-blue-3'"
+				>
+					{{ cls.meeting_platform }}
+				</span>
 			</div>
 			<div class="short-introduction">
 				{{ cls.description }}
@@ -63,7 +72,7 @@
 					class="flex items-center space-x-2 text-ink-gray-9 mt-auto"
 				>
 					<a
-						v-if="user.data?.is_moderator || user.data?.is_evaluator"
+						v-if="(user.data?.is_moderator || user.data?.is_evaluator) && cls.start_url"
 						:href="cls.start_url"
 						target="_blank"
 						class="cursor-pointer inline-flex items-center justify-center gap-2 transition-colors focus:outline-none text-ink-gray-8 bg-surface-gray-2 hover:bg-surface-gray-3 active:bg-surface-gray-4 focus-visible:ring focus-visible:ring-outline-gray-3 h-7 text-base px-2 rounded"
@@ -73,7 +82,7 @@
 						{{ __('Start') }}
 					</a>
 					<a
-						:href="cls.join_url"
+						:href="getJoinUrl(cls)"
 						target="_blank"
 						class="w-full cursor-pointer inline-flex items-center justify-center gap-2 transition-colors focus:outline-none text-ink-gray-8 bg-surface-gray-2 hover:bg-surface-gray-3 active:bg-surface-gray-4 focus-visible:ring focus-visible:ring-outline-gray-3 h-7 text-base px-2 rounded"
 					>
@@ -103,6 +112,7 @@
 	<LiveClassModal
 		:batch="props.batch"
 		:zoomAccount="props.zoomAccount"
+		:googleMeetAccount="props.googleMeetAccount"
 		v-model="showLiveClassModal"
 		v-model:reloadLiveClasses="liveClasses"
 	/>
@@ -138,6 +148,7 @@ const props = defineProps({
 		required: true,
 	},
 	zoomAccount: String,
+	googleMeetAccount: String,
 })
 
 const liveClasses = createListResource({
@@ -154,6 +165,8 @@ const liveClasses = createListResource({
 		'attendees',
 		'start_url',
 		'join_url',
+		'meeting_platform',
+		'google_meet_link',
 		'owner',
 	],
 	orderBy: 'date',
@@ -164,9 +177,13 @@ const openLiveClassModal = () => {
 	showLiveClassModal.value = true
 }
 
+const hasMeetingAccount = () => {
+	return props.zoomAccount || props.googleMeetAccount
+}
+
 const canCreateClass = () => {
 	if (readOnlyMode) return false
-	if (!props.zoomAccount) return false
+	if (!hasMeetingAccount()) return false
 	return hasPermission()
 }
 
@@ -194,6 +211,14 @@ const hasClassEnded = (cls) => {
 	const classEnd = getClassEnd(cls)
 	const now = new Date()
 	return now > classEnd
+}
+
+const getJoinUrl = (cls) => {
+	// For Google Meet, use google_meet_link if available
+	if (cls.meeting_platform === 'Google Meet' && cls.google_meet_link) {
+		return cls.google_meet_link
+	}
+	return cls.join_url
 }
 
 const openAttendanceModal = (cls) => {

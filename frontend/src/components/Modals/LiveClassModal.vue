@@ -37,6 +37,17 @@
 								:required="true"
 							/>
 						</Tooltip>
+						<div class="space-y-1.5">
+							<label class="block text-ink-gray-5 text-xs">
+								{{ __('Meeting Platform') }}
+								<span class="text-ink-red-3">*</span>
+							</label>
+							<FormControl
+								v-model="liveClass.meeting_platform"
+								type="select"
+								:options="getPlatformOptions()"
+							/>
+						</div>
 					</div>
 					<div class="space-y-4">
 						<Tooltip
@@ -92,7 +103,7 @@ import {
 	Autocomplete,
 	toast,
 } from 'frappe-ui'
-import { reactive, inject, onMounted } from 'vue'
+import { reactive, inject, onMounted, computed, watch } from 'vue'
 import { getTimezones, getUserTimezone } from '@/utils/'
 
 const liveClasses = defineModel('reloadLiveClasses')
@@ -107,9 +118,20 @@ const props = defineProps({
 	},
 	zoomAccount: {
 		type: String,
-		required: true,
+		default: '',
+	},
+	googleMeetAccount: {
+		type: String,
+		default: '',
 	},
 })
+
+// Determine default platform based on available accounts
+const getDefaultPlatform = () => {
+	if (props.zoomAccount) return 'Zoom'
+	if (props.googleMeetAccount) return 'Google Meet'
+	return 'Zoom'
+}
 
 let liveClass = reactive({
 	title: '',
@@ -120,12 +142,37 @@ let liveClass = reactive({
 	timezone: '',
 	auto_recording: 'No Recording',
 	batch: props.batch,
-	host: user.data.name,
+	host: user.data?.name || '',
+	meeting_platform: getDefaultPlatform(),
 })
 
 onMounted(() => {
 	liveClass.timezone = getUserTimezone()
+	liveClass.meeting_platform = getDefaultPlatform()
 })
+
+// Watch for changes in available accounts
+watch(() => [props.zoomAccount, props.googleMeetAccount], () => {
+	liveClass.meeting_platform = getDefaultPlatform()
+})
+
+const getPlatformOptions = () => {
+	const options = []
+	if (props.zoomAccount) {
+		options.push({ label: 'Zoom', value: 'Zoom' })
+	}
+	if (props.googleMeetAccount) {
+		options.push({ label: 'Google Meet', value: 'Google Meet' })
+	}
+	// If no accounts configured, show all options
+	if (options.length === 0) {
+		options.push(
+			{ label: 'Zoom', value: 'Zoom' },
+			{ label: 'Google Meet', value: 'Google Meet' }
+		)
+	}
+	return options
+}
 
 const getTimezoneOptions = () => {
 	return getTimezones().map((timezone) => {
@@ -153,7 +200,7 @@ const getRecordingOptions = () => {
 	]
 }
 
-const createLiveClass = createResource({
+const createZoomLiveClass = createResource({
 	url: 'lms.lms.doctype.lms_batch.lms_batch.create_live_class',
 	makeParams(values) {
 		return {
@@ -165,8 +212,29 @@ const createLiveClass = createResource({
 	},
 })
 
+const createGoogleMeetLiveClass = createResource({
+	url: 'lms.lms.doctype.lms_batch.lms_batch.create_google_meet_live_class',
+	makeParams(values) {
+		return {
+			batch_name: values.batch,
+			google_meet_account: props.googleMeetAccount,
+			title: values.title,
+			duration: values.duration,
+			date: values.date,
+			time: values.time,
+			timezone: values.timezone,
+			auto_recording: values.auto_recording,
+			description: values.description,
+		}
+	},
+})
+
 const submitLiveClass = (close) => {
-	return createLiveClass.submit(liveClass, {
+	const resource = liveClass.meeting_platform === 'Google Meet'
+		? createGoogleMeetLiveClass
+		: createZoomLiveClass
+
+	return resource.submit(liveClass, {
 		validate() {
 			validateFormFields()
 		},
@@ -212,6 +280,13 @@ const validateFormFields = () => {
 	if (!liveClass.duration) {
 		return __('Please select a duration.')
 	}
+	// Validate platform-specific requirements
+	if (liveClass.meeting_platform === 'Zoom' && !props.zoomAccount) {
+		return __('Please add a Zoom account to the batch first.')
+	}
+	if (liveClass.meeting_platform === 'Google Meet' && !props.googleMeetAccount) {
+		return __('Please add a Google Meet account to the batch first.')
+	}
 }
 
 const valideTime = () => {
@@ -236,5 +311,7 @@ const refreshForm = () => {
 	liveClass.duration = ''
 	liveClass.timezone = getUserTimezone()
 	liveClass.auto_recording = 'No Recording'
+	liveClass.meeting_platform = getDefaultPlatform()
 }
 </script>
+

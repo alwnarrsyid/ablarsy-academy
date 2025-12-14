@@ -166,17 +166,27 @@
 								}
 							"
 						/>
-						<Link
-							doctype="LMS Zoom Settings"
-							:label="__('Zoom Account')"
-							v-model="batch.zoom_account"
-							:onCreate="
-								(value, close) => {
-									openSettings('Zoom Accounts', close)
-								}
-							"
-						/>
-					</div>
+							<Link
+								doctype="LMS Zoom Settings"
+								:label="__('Zoom Account')"
+								v-model="batch.zoom_account"
+								:onCreate="
+									(value, close) => {
+										openSettings('Zoom Accounts', close)
+									}
+								"
+							/>
+							<Link
+								doctype="LMS Google Meet Settings"
+								:label="__('Google Meet Account')"
+								v-model="batch.google_meet_account"
+								:onCreate="
+									(value, close) => {
+										openSettings('Google Meet Settings', close)
+									}
+								"
+							/>
+						</div>
 					<div class="space-y-5">
 						<FormControl
 							v-model="batch.medium"
@@ -385,6 +395,7 @@ const batch = reactive({
 	currency: '',
 	amount: 0,
 	zoom_account: '',
+	google_meet_account: '',
 })
 
 const meta = reactive({

@@ -76,6 +76,7 @@
 								<LiveClass
 									:batch="batch.data.name"
 									:zoomAccount="batch.data.zoom_account"
+									:googleMeetAccount="batch.data.google_meet_account"
 								/>
 							</div>
 							<div v-else-if="tab.label == 'Assessments'">

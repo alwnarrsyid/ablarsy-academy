@@ -203,14 +203,73 @@ import { X } from 'lucide-vue-next'
 const user = inject('$user')
 const { brand } = sessionStore()
 
-onMounted(() => {
-	const script = document.createElement('script')
-	script.src = `https://checkout.razorpay.com/v1/checkout.js`
-	document.body.appendChild(script)
+const paymentGateway = ref('')
+const midtransSnapLoaded = ref(false)
+
+onMounted(async () => {
+	// Load Razorpay SDK
+	const razorpayScript = document.createElement('script')
+	razorpayScript.src = `https://checkout.razorpay.com/v1/checkout.js`
+	document.body.appendChild(razorpayScript)
+
 	if (user.data?.name) {
 		access.submit()
 	}
+
+	// Check payment gateway configuration
+	try {
+		const gateway = await call('frappe.client.get_single_value', {
+			doctype: 'LMS Settings',
+			field: 'payment_gateway'
+		})
+		paymentGateway.value = gateway || ''
+
+		// If Midtrans, check if enabled and load Snap SDK
+		if (gateway === 'Midtrans') {
+			const midtransEnabled = await call('lms.lms.doctype.midtrans_settings.midtrans_settings.is_midtrans_enabled')
+			if (midtransEnabled) {
+				await loadMidtransSnap()
+			}
+		}
+	} catch (e) {
+		console.log('Could not determine payment gateway:', e)
+	}
 })
+
+const loadMidtransSnap = () => {
+	return new Promise((resolve, reject) => {
+		if (window.snap) {
+			midtransSnapLoaded.value = true
+			resolve()
+			return
+		}
+
+		// Determine environment (sandbox or production)
+		call('frappe.client.get_single_value', {
+			doctype: 'Midtrans Settings',
+			field: 'environment'
+		}).then((env) => {
+			const snapUrl = env === 'Production'
+				? 'https://app.midtrans.com/snap/snap.js'
+				: 'https://app.sandbox.midtrans.com/snap/snap.js'
+
+			call('frappe.client.get_single_value', {
+				doctype: 'Midtrans Settings',
+				field: 'client_key'
+			}).then((clientKey) => {
+				const script = document.createElement('script')
+				script.src = snapUrl
+				script.setAttribute('data-client-key', clientKey)
+				script.onload = () => {
+					midtransSnapLoaded.value = true
+					resolve()
+				}
+				script.onerror = reject
+				document.body.appendChild(script)
+			})
+		})
+	})
+}
 
 const props = defineProps({
 	type: {
@@ -288,7 +347,65 @@ const paymentLink = createResource({
 	},
 })
 
-const generatePaymentLink = () => {
+const generatePaymentLink = async () => {
+	// Validate first
+	if (!billingDetails.source) {
+		toast.error(__('Please let us know where you heard about us from.'))
+		return
+	}
+	const validationError = validateAddress()
+	if (validationError) {
+		toast.error(validationError)
+		return
+	}
+
+	// Check if we should use Midtrans
+	if (paymentGateway.value === 'Midtrans' && midtransSnapLoaded.value) {
+		try {
+			const result = await call('lms.lms.gateways.midtrans_gateway.get_midtrans_payment_token', {
+				doctype: props.type == 'batch' ? 'LMS Batch' : 'LMS Course',
+				docname: props.name,
+				title: orderSummary.data.title,
+				amount: orderSummary.data.original_amount,
+				discount_amount: orderSummary.data.discount_amount || 0,
+				gst_amount: orderSummary.data.gst_applied || 0,
+				currency: orderSummary.data.currency,
+				address: billingDetails,
+				redirect_to: redirectTo.value,
+				payment_for_certificate: props.type == 'certificate',
+				coupon_code: appliedCoupon.value,
+				coupon: orderSummary.data.coupon,
+			})
+
+			if (result.token && window.snap) {
+				// Use Midtrans Snap popup
+				window.snap.pay(result.token, {
+					onSuccess: function(result) {
+						toast.success(__('Payment successful!'))
+						window.location.href = redirectTo.value
+					},
+					onPending: function(result) {
+						toast.info(__('Payment pending. Please complete the payment.'))
+						window.location.href = '/lms/payment-pending'
+					},
+					onError: function(result) {
+						toast.error(__('Payment failed. Please try again.'))
+					},
+					onClose: function() {
+						toast.info(__('Payment popup closed.'))
+					}
+				})
+			} else if (result.redirect_url) {
+				// Fallback to redirect
+				window.location.href = result.redirect_url
+			}
+		} catch (err) {
+			toast.error(err.messages?.[0] || err.message || __('Payment failed'))
+		}
+		return
+	}
+
+	// Standard payment flow for other gateways
 	paymentLink.submit(
 		{},
 		{

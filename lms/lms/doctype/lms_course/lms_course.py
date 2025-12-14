@@ -53,11 +53,18 @@ class LMSCourse(Document):
 	def validate_payments_app(self):
 		if self.paid_course:
 			installed_apps = frappe.get_installed_apps()
-			if "payments" not in installed_apps:
+			# Check if Midtrans is enabled as an alternative to payments app
+			midtrans_enabled = False
+			try:
+				midtrans_enabled = frappe.db.get_single_value("Midtrans Settings", "enabled")
+			except Exception:
+				pass
+
+			if "payments" not in installed_apps and not midtrans_enabled:
 				documentation_link = "https://docs.frappe.io/learning/setting-up-payment-gateway"
 				frappe.throw(
 					_(
-						"Please install the Payments App to create a paid course. Refer to the documentation for more details. {0}"
+						"Please install the Payments App or enable Midtrans to create a paid course. Refer to the documentation for more details. {0}"
 					).format(documentation_link)
 				)
 

@@ -65,6 +65,15 @@ after_sync = "lms.install.after_sync"
 before_uninstall = "lms.install.before_uninstall"
 setup_wizard_requires = "assets/lms/js/setup_wizard.js"
 
+# Fixtures
+# --------
+fixtures = [
+	{
+		"doctype": "Currency",
+		"filters": [["name", "in", ["IDR"]]]
+	}
+]
+
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config

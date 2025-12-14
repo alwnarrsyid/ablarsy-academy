@@ -260,6 +260,16 @@ const routes = [
 		component: () => import('@/pages/DataImport.vue'),
 		props: true,
 	},
+	{
+		path: '/payment-pending',
+		name: 'PaymentPending',
+		component: () => import('@/pages/PaymentPending.vue'),
+	},
+	{
+		path: '/payment-error',
+		name: 'PaymentError',
+		component: () => import('@/pages/PaymentError.vue'),
+	},
 ]
 
 let router = createRouter({

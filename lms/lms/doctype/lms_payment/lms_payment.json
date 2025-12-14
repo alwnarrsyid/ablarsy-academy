@@ -15,6 +15,7 @@
   "payment_for_document",
   "payment_received",
   "payment_for_certificate",
+  "status",
   "payment_details_section",
   "original_amount",
   "discount_amount",
@@ -30,7 +31,13 @@
   "order_id",
   "column_break_monu",
   "gstin",
-  "pan"
+  "pan",
+  "midtrans_section",
+  "midtrans_order_id",
+  "midtrans_token",
+  "column_break_midtrans",
+  "midtrans_transaction_id",
+  "midtrans_payment_type"
  ],
  "fields": [
   {
@@ -181,6 +188,50 @@
    "fieldtype": "Currency",
    "label": "Original Amount",
    "options": "currency"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nPaid\nFailed\nCancelled",
+   "default": "Pending",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "midtrans_section",
+   "fieldtype": "Section Break",
+   "label": "Midtrans Details",
+   "collapsible": 1,
+   "depends_on": "midtrans_order_id"
+  },
+  {
+   "fieldname": "midtrans_order_id",
+   "fieldtype": "Data",
+   "label": "Midtrans Order ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "midtrans_token",
+   "fieldtype": "Data",
+   "label": "Midtrans Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_midtrans",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "midtrans_transaction_id",
+   "fieldtype": "Data",
+   "label": "Midtrans Transaction ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "midtrans_payment_type",
+   "fieldtype": "Data",
+   "label": "Midtrans Payment Type",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

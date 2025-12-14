@@ -164,6 +164,7 @@ const getCurrencySymbol = (currency: string) => {
 		CHF: 'Fr',
 		JPY: '¥',
 		AUD: '$',
+		IDR: 'Rp',
 	}
 	return currencySymbols[currency] || currency
 }

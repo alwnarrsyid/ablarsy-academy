@@ -29,6 +29,17 @@ from frappe.utils import (
 
 from lms.lms.md import find_macros, markdown_to_html
 
+
+def format_price(amount, currency):
+    """Custom price formatter that handles IDR specially."""
+    if currency == "IDR":
+        # Format IDR with Indonesian style: Rp 100.000
+        formatted = "{:,.0f}".format(float(amount)).replace(",", ".")
+        return f"Rp {formatted}"
+    else:
+        # Use default frappe formatter for other currencies
+        return fmt_money(amount, 0, currency)
+
 RE_SLUG_NOTALLOWED = re.compile("[^a-z0-9]+")
 
 
@@ -1009,7 +1020,7 @@ def get_course_card_details(courses):
 			course.amount, course.currency = check_multicurrency(
 				course.course_price, course.currency, None, course.amount_usd
 			)
-			course.price = fmt_money(course.amount, 0, course.currency)
+			course.price = format_price(course.amount, course.currency)
 
 	return courses
 
@@ -1154,7 +1165,7 @@ def get_course_details(course):
 		"""course_details.course_price, course_details.currency = check_multicurrency(
 				course_details.course_price, course_details.currency, None, course_details.amount_usd
 		)"""
-		course_details.price = fmt_money(course_details.course_price, 0, course_details.currency)
+		course_details.price = format_price(course_details.course_price, course_details.currency)
 
 	if frappe.session.user == "Guest":
 		course_details.membership = None
@@ -1382,6 +1393,7 @@ def get_batch_details(batch):
 			"timezone",
 			"category",
 			"zoom_account",
+			"google_meet_account",
 		],
 		as_dict=True,
 	)
@@ -1405,7 +1417,7 @@ def get_batch_details(batch):
 		batch_details.amount, batch_details.currency = check_multicurrency(
 			batch_details.amount, batch_details.currency, None, batch_details.amount_usd
 		)
-		batch_details.price = fmt_money(batch_details.amount, 0, batch_details.currency)
+		batch_details.price = format_price(batch_details.amount, batch_details.currency)
 
 	if batch_details.seat_count:
 		batch_details.seats_left = batch_details.seat_count - len(batch_details.students)
@@ -1800,13 +1812,13 @@ def get_order_summary(doctype, docname, coupon=None, country=None):
 	)
 
 	details.original_amount = details.amount
-	details.original_amount_formatted = fmt_money(details.amount, 0, details.currency)
+	details.original_amount_formatted = format_price(details.amount, details.currency)
 
 	adjust_amount_for_coupon(details, coupon, doctype, docname)
 	get_gst_details(details, country)
 
 	details.total_amount = details.amount
-	details.total_amount_formatted = fmt_money(details.amount, 0, details.currency)
+	details.total_amount_formatted = format_price(details.amount, details.currency)
 
 	return details
 
@@ -1853,7 +1865,7 @@ def adjust_amount_for_coupon(details, coupon, doctype, docname):
 	discount_amount, subtotal, coupon_name = apply_coupon(doctype, docname, coupon, details.amount)
 	details.amount = subtotal
 	details.discount_amount = discount_amount
-	details.discount_amount_formatted = fmt_money(discount_amount, 0, details.currency)
+	details.discount_amount_formatted = format_price(discount_amount, details.currency)
 	details.coupon = coupon_name
 
 
@@ -1862,7 +1874,7 @@ def get_gst_details(details, country):
 		return
 
 	details.amount, details.gst_applied = apply_gst(details.amount, country)
-	details.gst_amount_formatted = fmt_money(details.gst_applied, 0, details.currency)
+	details.gst_amount_formatted = format_price(details.gst_applied, details.currency)
 
 
 def apply_coupon(doctype, docname, code, base_amount):
@@ -2316,7 +2328,7 @@ def get_batch_card_details(batches):
 			batch.amount, batch.currency = check_multicurrency(
 				batch.amount, batch.currency, None, batch.amount_usd
 			)
-			batch.price = fmt_money(batch.amount, 0, batch.currency)
+			batch.price = format_price(batch.amount, batch.currency)
 
 	return batches
 
