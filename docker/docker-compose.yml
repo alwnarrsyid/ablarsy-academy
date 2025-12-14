@@ -12,9 +12,13 @@ services:
             MYSQL_ROOT_PASSWORD: 123
         volumes:
             - mariadb-data:/var/lib/mysql
+        networks:
+            - default
 
     redis:
         image: redis:alpine
+        networks:
+            - default
 
     frappe:
         image: frappe/bench:latest
@@ -24,9 +28,20 @@ services:
         working_dir: /home/frappe
         volumes:
             - .:/workspace
-        ports:
-            - 8000:8000
-            - 9000:9000
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.lms.rule=Host(`lms.ablarsy.com`)"
+            - "traefik.http.routers.lms.entrypoints=websecure"
+            - "traefik.http.routers.lms.tls=true"
+            - "traefik.http.routers.lms.tls.certresolver=mytlschallenge"
+            - "traefik.http.services.lms.loadbalancer.server.port=8000"
+        networks:
+            - default
+            - root_default
 
 volumes:
     mariadb-data:
+
+networks:
+    root_default:
+        external: true
