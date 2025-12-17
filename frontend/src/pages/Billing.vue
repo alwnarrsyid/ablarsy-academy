@@ -1,0 +1,527 @@
+<template>
+	<div class="">
+		<header
+			class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-3 py-2.5 sm:px-5"
+		>
+			<Breadcrumbs
+				class="h-7"
+				:items="[{ label: __('Billing Details'), route: { name: 'Billing' } }]"
+			/>
+		</header>
+		<div
+			v-if="access.data?.access && orderSummary.data"
+			class="pt-5 pb-10 mx-5"
+		>
+			<div class="flex flex-col lg:flex-row justify-between">
+				<div class="flex flex-col lg:order-last mb-10 lg:mt-10 lg:w-1/4">
+					<div class="h-fit bg-surface-gray-2 rounded-md p-5 space-y-4">
+						<div class="space-y-1">
+							<div class="text-ink-gray-5 uppercase text-xs">
+								{{ __('Payment for ') }} {{ type }}:
+							</div>
+							<div class="leading-5 text-ink-gray-9">
+								{{ orderSummary.data.title }}
+							</div>
+						</div>
+						<div
+							v-if="
+								orderSummary.data.gst_applied ||
+								orderSummary.data.discount_amount
+							"
+							class="space-y-1"
+						>
+							<div class="text-ink-gray-5 uppercase text-xs">
+								{{ __('Original Amount') }}:
+							</div>
+							<div class="text-ink-gray-9">
+								{{ orderSummary.data.original_amount_formatted }}
+							</div>
+						</div>
+						<div v-if="orderSummary.data.discount_amount" class="space-y-1">
+							<div class="text-ink-gray-5">{{ __('Discount') }}:</div>
+							<div>- {{ orderSummary.data.discount_amount_formatted }}</div>
+						</div>
+						<div v-if="orderSummary.data.gst_applied" class="space-y-1">
+							<div class="text-ink-gray-5 uppercase text-xs">
+								{{ __('GST Amount') }}:
+							</div>
+							<div class="text-ink-gray-9">
+								{{ orderSummary.data.gst_amount_formatted }}
+							</div>
+						</div>
+						<div class="space-y-1 border-t border-outline-gray-3 pt-4 mt-2">
+							<div class="uppercase text-ink-gray-5 text-xs">
+								{{ __('Total') }}:
+							</div>
+							<div class="font-bold text-ink-gray-9">
+								{{ orderSummary.data.total_amount_formatted }}
+							</div>
+						</div>
+					</div>
+
+					<div class="bg-surface-gray-2 rounded-md p-4 space-y-2 my-5">
+						<span class="text-ink-gray-5 uppercase text-xs">
+							{{ __('Enter a Coupon Code') }}:
+						</span>
+						<div class="flex items-center space-x-2">
+							<FormControl
+								v-model="appliedCoupon"
+								:disabled="orderSummary.data.discount_amount > 0"
+								@input="appliedCoupon = $event.target.value.toUpperCase()"
+								@keydown.enter="applyCouponCode"
+								placeholder="COUPON2025"
+								autocomplete="off"
+								class="flex-1 [&_input]:bg-white"
+							/>
+							<Button
+								v-if="!orderSummary.data.discount_amount"
+								@click="applyCouponCode"
+								variant="outline"
+							>
+								{{ __('Apply') }}
+							</Button>
+							<Button
+								v-if="orderSummary.data.discount_amount"
+								@click="removeCoupon"
+								variant="outline"
+							>
+								<template #icon>
+									<X class="size-4 stroke-1.5" />
+								</template>
+							</Button>
+						</div>
+					</div>
+				</div>
+
+				<div class="flex-1 lg:mr-10">
+					<div class="mb-5">
+						<div class="text-lg font-semibold text-ink-gray-9">
+							{{ __('Address') }}
+						</div>
+					</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+						<div class="space-y-4">
+							<FormControl
+								:label="__('Billing Name') + ' *'"
+								v-model="billingDetails.billing_name"
+								placeholder="Masukkan nama lengkap"
+							/>
+							<FormControl
+								:label="__('Address') + ' *'"
+								type="textarea"
+								v-model="billingDetails.address"
+								placeholder="Masukkan alamat lengkap (jalan, nomor rumah, RT/RW, dll)"
+								:rows="3"
+							/>
+							<div class="space-y-2">
+								<label class="block text-xs text-ink-gray-5">{{ __('Search Location') }}</label>
+								<div class="relative">
+									<FormControl
+										v-model="locationSearch"
+										@input="searchLocation"
+										placeholder="Ketik nama desa, kecamatan, atau kota..."
+										autocomplete="off"
+									/>
+									<div
+										v-if="locationResults.length > 0"
+										class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
+									>
+										<div
+											v-for="loc in locationResults"
+											:key="loc.name"
+											@click="selectLocation(loc)"
+											class="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+										>
+											<div class="font-medium text-ink-gray-9">{{ loc.village }}, {{ loc.district }}</div>
+											<div class="text-sm text-ink-gray-5">{{ loc.city }}, {{ loc.province }}</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<FormControl
+								:label="__('Village')"
+								v-model="billingDetails.village"
+								:disabled="true"
+							/>
+							<FormControl
+								:label="__('District')"
+								v-model="billingDetails.district"
+								:disabled="true"
+							/>
+						</div>
+						<div class="space-y-4">
+							<FormControl
+								:label="__('City/Regency')"
+								v-model="billingDetails.city"
+								:disabled="true"
+							/>
+							<FormControl
+								:label="__('Province')"
+								v-model="billingDetails.state"
+								:disabled="true"
+							/>
+							<FormControl
+								:label="__('Postal Code')"
+								v-model="billingDetails.pincode"
+								placeholder="Masukkan kode pos (opsional)"
+							/>
+							<FormControl
+								:label="__('Phone Number')"
+								v-model="billingDetails.phone"
+								placeholder="08xxxxxxxxxx"
+							/>
+							<Link
+								doctype="LMS Source"
+								:value="billingDetails.source"
+								@change="(option) => (billingDetails.source = option)"
+								:label="__('Where did you hear about us?') + ' *'"
+							/>
+						</div>
+					</div>
+					<div class="flex items-center justify-between border-t pt-4 mt-8">
+						<p class="text-ink-gray-5">
+							{{ __('Make sure to enter the correct billing name as the same will be used in your invoice.') }}
+						</p>
+						<Button variant="solid" size="md" @click="generatePaymentLink()">
+							{{ __('Proceed to Payment') }}
+						</Button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div v-else-if="access.data?.message">
+			<NotPermitted
+				:text="access.data.message"
+				:buttonLabel="type == 'course' ? 'Checkout Course' : 'Checkout Batch'"
+				:buttonLink="
+					type == 'course' ? `/lms/courses/${name}` : `/lms/batches/${name}`
+				"
+			/>
+		</div>
+		<div v-else-if="!user.data?.name">
+			<NotPermitted
+				text="Please login to access this page."
+				:buttonLink="`/login?redirect-to=/lms/billing/${type}/${name}`"
+			/>
+		</div>
+	</div>
+</template>
+<script setup>
+import {
+	Button,
+	createResource,
+	FormControl,
+	Breadcrumbs,
+	usePageMeta,
+	toast,
+	call,
+} from 'frappe-ui'
+import { reactive, inject, onMounted, computed, ref } from 'vue'
+import { sessionStore } from '../stores/session'
+import Link from '@/components/Controls/Link.vue'
+import NotPermitted from '@/components/NotPermitted.vue'
+import { X } from 'lucide-vue-next'
+
+const user = inject('$user')
+const { brand } = sessionStore()
+
+const paymentGateway = ref('')
+const midtransSnapLoaded = ref(false)
+
+onMounted(async () => {
+	// Load Razorpay SDK
+	const razorpayScript = document.createElement('script')
+	razorpayScript.src = `https://checkout.razorpay.com/v1/checkout.js`
+	document.body.appendChild(razorpayScript)
+
+	if (user.data?.name) {
+		access.submit()
+	}
+
+	// Check payment gateway configuration
+	try {
+		const gateway = await call('frappe.client.get_single_value', {
+			doctype: 'LMS Settings',
+			field: 'payment_gateway'
+		})
+		paymentGateway.value = gateway || ''
+
+		// If Midtrans, check if enabled and load Snap SDK
+		if (gateway === 'Midtrans') {
+			const midtransEnabled = await call('lms.lms.doctype.midtrans_settings.midtrans_settings.is_midtrans_enabled')
+			if (midtransEnabled) {
+				await loadMidtransSnap()
+			}
+		}
+	} catch (e) {
+		console.log('Could not determine payment gateway:', e)
+	}
+})
+
+const loadMidtransSnap = () => {
+	return new Promise((resolve, reject) => {
+		if (window.snap) {
+			midtransSnapLoaded.value = true
+			resolve()
+			return
+		}
+
+		// Determine environment (sandbox or production)
+		call('frappe.client.get_single_value', {
+			doctype: 'Midtrans Settings',
+			field: 'environment'
+		}).then((env) => {
+			const snapUrl = env === 'Production'
+				? 'https://app.midtrans.com/snap/snap.js'
+				: 'https://app.sandbox.midtrans.com/snap/snap.js'
+
+			call('frappe.client.get_single_value', {
+				doctype: 'Midtrans Settings',
+				field: 'client_key'
+			}).then((clientKey) => {
+				const script = document.createElement('script')
+				script.src = snapUrl
+				script.setAttribute('data-client-key', clientKey)
+				script.onload = () => {
+					midtransSnapLoaded.value = true
+					resolve()
+				}
+				script.onerror = reject
+				document.body.appendChild(script)
+			})
+		})
+	})
+}
+
+const props = defineProps({
+	type: {
+		type: String,
+		required: true,
+	},
+	name: {
+		type: String,
+		required: true,
+	},
+})
+
+const access = createResource({
+	url: 'lms.lms.api.validate_billing_access',
+	params: {
+		billing_type: props.type,
+		name: props.name,
+	},
+	onSuccess(data) {
+		setBillingDetails(data.address)
+		orderSummary.submit()
+	},
+})
+
+const orderSummary = createResource({
+	url: 'lms.lms.utils.get_order_summary',
+	makeParams(values) {
+		return {
+			doctype: props.type == 'batch' ? 'LMS Batch' : 'LMS Course',
+			docname: props.name,
+			country: billingDetails.country,
+			coupon: appliedCoupon.value,
+		}
+	},
+	onError(err) {
+		showError(err)
+	},
+})
+
+const appliedCoupon = ref(null)
+const billingDetails = reactive({})
+const locationSearch = ref('')
+const locationResults = ref([])
+let searchTimeout = null
+
+const setBillingDetails = (data) => {
+	billingDetails.billing_name = data?.billing_name || ''
+	billingDetails.address = data?.address_line1 || ''
+	billingDetails.village = data?.village || ''
+	billingDetails.district = data?.district || ''
+	billingDetails.city = data?.city || ''
+	billingDetails.state = data?.state || ''
+	billingDetails.country = 'Indonesia'
+	billingDetails.pincode = data?.pincode || ''
+	billingDetails.phone = data?.phone || ''
+	billingDetails.source = data?.source || ''
+}
+
+const searchLocation = () => {
+	// Debounce search
+	if (searchTimeout) clearTimeout(searchTimeout)
+
+	if (!locationSearch.value || locationSearch.value.length < 2) {
+		locationResults.value = []
+		return
+	}
+
+	searchTimeout = setTimeout(async () => {
+		try {
+			const results = await call('lms.lms.doctype.indonesia_location.indonesia_location.search_location', {
+				query: locationSearch.value
+			})
+			locationResults.value = results || []
+		} catch (e) {
+			console.error('Location search error:', e)
+			locationResults.value = []
+		}
+	}, 300)
+}
+
+const selectLocation = (loc) => {
+	billingDetails.village = loc.village
+	billingDetails.district = loc.district
+	billingDetails.city = loc.city
+	billingDetails.state = loc.province
+	locationSearch.value = `${loc.village}, ${loc.district}, ${loc.city}`
+	locationResults.value = []
+}
+
+const paymentLink = createResource({
+	url: 'lms.lms.payments.get_payment_link',
+	makeParams(values) {
+		let data = {
+			doctype: props.type == 'batch' ? 'LMS Batch' : 'LMS Course',
+			docname: props.name,
+			title: orderSummary.data.title,
+			amount: orderSummary.data.original_amount,
+			discount_amount: orderSummary.data.discount_amount || 0,
+			gst_amount: orderSummary.data.gst_applied || 0,
+			currency: orderSummary.data.currency,
+			address: billingDetails,
+			redirect_to: redirectTo.value,
+			payment_for_certificate: props.type == 'certificate',
+			coupon_code: appliedCoupon.value,
+			coupon: orderSummary.data.coupon,
+		}
+		return data
+	},
+})
+
+const generatePaymentLink = async () => {
+	// Validate first
+	const validationError = validateAddress()
+	if (validationError) {
+		toast.error(validationError)
+		return
+	}
+
+	// Check if we should use Midtrans
+	if (paymentGateway.value === 'Midtrans' && midtransSnapLoaded.value) {
+		try {
+			const result = await call('lms.lms.gateways.midtrans_gateway.get_midtrans_payment_token', {
+				doctype: props.type == 'batch' ? 'LMS Batch' : 'LMS Course',
+				docname: props.name,
+				title: orderSummary.data.title,
+				amount: orderSummary.data.original_amount,
+				discount_amount: orderSummary.data.discount_amount || 0,
+				gst_amount: orderSummary.data.gst_applied || 0,
+				currency: orderSummary.data.currency,
+				address: billingDetails,
+				redirect_to: redirectTo.value,
+				payment_for_certificate: props.type == 'certificate',
+				coupon_code: appliedCoupon.value,
+				coupon: orderSummary.data.coupon,
+			})
+
+			if (result.token && window.snap) {
+				// Use Midtrans Snap popup
+				window.snap.pay(result.token, {
+					onSuccess: function(result) {
+						toast.success(__('Payment successful!'))
+						window.location.href = redirectTo.value
+					},
+					onPending: function(result) {
+						toast.info(__('Payment pending. Please complete the payment.'))
+						window.location.href = '/lms/payment-pending'
+					},
+					onError: function(result) {
+						toast.error(__('Payment failed. Please try again.'))
+					},
+					onClose: function() {
+						toast.info(__('Payment popup closed.'))
+					}
+				})
+			} else if (result.redirect_url) {
+				// Fallback to redirect
+				window.location.href = result.redirect_url
+			}
+		} catch (err) {
+			toast.error(err.messages?.[0] || err.message || __('Payment failed'))
+		}
+		return
+	}
+
+	// Standard payment flow for other gateways
+	paymentLink.submit(
+		{},
+		{
+			validate() {
+				return validateAddress()
+			},
+			onSuccess(data) {
+				window.location.href = data
+			},
+			onError(err) {
+				toast.error(err.messages?.[0] || err)
+			},
+		}
+	)
+}
+
+function applyCouponCode() {
+	if (!appliedCoupon.value) {
+		toast.error(__('Please enter a coupon code'))
+		return
+	}
+	orderSummary.reload()
+}
+
+function removeCoupon() {
+	appliedCoupon.value = null
+	orderSummary.reload()
+}
+
+const validateAddress = () => {
+	// Mandatory fields: Billing Name, Address, Source
+	if (!billingDetails.billing_name) {
+		return 'Silakan masukkan Nama Billing'
+	}
+	if (!billingDetails.address) {
+		return 'Silakan masukkan Alamat'
+	}
+	if (!billingDetails.source) {
+		return 'Silakan pilih dari mana Anda mengetahui kami'
+	}
+}
+
+const showError = (err) => {
+	toast.error(err.messages?.[0] || err)
+}
+
+const changeCurrency = (country) => {
+	billingDetails.country = country
+	orderSummary.reload()
+}
+
+const redirectTo = computed(() => {
+	if (props.type == 'course') {
+		return `/lms/courses/${props.name}`
+	} else if (props.type == 'batch') {
+		return `/lms/batches/${props.name}`
+	} else if (props.type == 'certificate') {
+		return `/lms/courses/${props.name}/certification`
+	}
+})
+
+usePageMeta(() => {
+	return {
+		title: __('Billing Details'),
+		icon: brand.favicon,
+	}
+})
+</script>
