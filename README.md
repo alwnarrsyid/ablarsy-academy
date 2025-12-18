@@ -1,86 +1,226 @@
 # Ablarsy Academy LMS
 
-A specialized Learning Management System (LMS) built on [Frappe LMS](https://github.com/frappe/lms) for **Ablarsy Academy**. This repository contains custom integrations and enhancements tailored for the Indonesian market and seamless virtual classroom experiences.
+Customized Learning Management System based on [Frappe LMS](https://github.com/frappe/lms).
 
-## 🚀 Key Features
+## 🎯 Overview
 
-### 1. Google Meet Integration (New)
+Ablarsy Academy LMS is a comprehensive learning management system with Indonesian payment gateway integration (Midtrans), mobile-optimized UI, PWA support, and custom landscape certificate PDF generation.
 
--   **Automated Meeting Creation**: Automatically generates Google Meet links when creating Live Classes.
--   **Seamless Calendar Sync**: Integrates directly with Google Calendar API to schedule sessions.
--   **Dual Platform Support**: Flexible choice between Zoom and Google Meet for each batch or class session.
+---
 
-### 2. Midtrans Payment Gateway (New)
+## ✨ Key Customizations
 
--   **Indonesian Payment Support**: Full integration with Midtrans for accepting payments via GoPay, Bank Transfer, ShopeePay, etc.
--   **Automated Enrollment**: Students are automatically enrolled in batches upon successful payment verification.
--   **Rupiah Formatting**: UI enhanced to properly display currency in IDR (Rp).
+### 1. 💳 Midtrans Payment Gateway Integration
 
-### 3. Enhanced UI/UX
+**Location:** `lms/lms/gateways/midtrans_gateway.py`
 
--   **Dark/Light Mode**: Fully supported theme switching.
--   **Responsive Design**: Optimized for mobile and desktop experiences.
--   **Custom Batch Management**: Improved tools for instructors to manage student batches.
+Indonesian payment gateway integration supporting:
 
-## 🛠️ Tech Stack & Requirements
+-   Credit/Debit Cards
+-   Bank Transfer (BCA, BNI, BRI, Mandiri, Permata)
+-   E-Wallets (GoPay, ShopeePay, QRIS)
+-   Convenience Store (Indomaret, Alfamart)
 
--   **Framework**: [Frappe Framework](https://frappe.io/framework)
--   **Frontend**: Vue.js 3
--   **Database**: MariaDB
--   **Cache**: Redis
--   **Deployment**: Docker
+**Configuration:**
 
-## ⚙️ Setup Guide (Local Development)
+```
+Frappe Desk → LMS Settings → Midtrans Settings
+- Server Key: Your Midtrans Server Key
+- Client Key: Your Midtrans Client Key
+- Environment: Sandbox / Production
+```
 
-This project is configured to run easily with Docker and supports ngrok for testing external integrations (Google OAuth, Midtrans Webhooks).
+### 2. 📜 Custom Certificate PDF (Landscape)
 
-### Prerequisites
+**Location:** `lms/lms/custom_certificate.py`
 
--   Docker & Docker Compose
--   Ngrok (optional, for exposing localhost)
+Custom certificate PDF generator that:
 
-### Quick Start
+-   Generates **A4 Landscape** PDF using Chromium headless
+-   Bypasses Frappe's default PDF generator (which has orientation issues)
+-   Beautiful design with custom fonts (Inter, Libre Baskerville, Playfair Display)
+-   Includes logo, instructor signatures, and certificate details
 
-1.  **Clone the repository:**
+**Endpoint:** `/api/method/lms.lms.custom_certificate.download_certificate_pdf`
 
-    ```bash
-    git clone https://github.com/alwnarrsyid/ablarsy-academy.git
-    cd ablarsy-academy/docker
-    ```
+**Updated Files:**
 
-2.  **Start Services:**
-    ```bash
-    docker compose up -d
-    ```
-    -   This will start MariaDB, Redis, and the Frappe backend/frontend services.
-    -   Access the site at `http://localhost:8000`.
+-   `frontend/src/components/CertificationLinks.vue`
+-   `frontend/src/pages/ProfileCertificates.vue`
+-   `frontend/src/pages/CourseCertification.vue`
+-   `frontend/src/components/CourseCardOverlay.vue`
+-   `frontend/src/components/Modals/Event.vue`
+-   `lms/www/certificate.py`
+-   `lms/lms/doctype/lms_certificate/lms_certificate.js`
+-   `lms/templates/emails/certification.html`
 
-### 🔑 Configuration
+### 3. 📱 Mobile Layout Optimization
 
-#### Google Meet Integration
+**Location:** `frontend/src/components/MobileLayout.vue`
 
-1.  Go to [Google Cloud Console](https://console.cloud.google.com/).
-2.  Enable **Google Calendar API**.
-3.  Create **OAuth 2.0 Credentials** (Web Application).
-4.  Add Redirect URI: `http://localhost:8000/api/method/frappe.integrations.doctype.google_calendar.google_calendar.google_callback`.
-    -   _Note: If using ngrok, use your ngrok URL instead._
-5.  In LMS, go to **Google Settings** and enter Client ID & Secret.
-6.  Create a **Google Calendar** record in LMS and authorize it.
-7.  Create **LMS Google Meet Settings** and link it to the calendar.
+-   Fixed mobile sidebar navigation
+-   Flattened nested sidebar links for mobile display
+-   Improved touch interactions
+-   PWA-optimized bottom navigation
 
-#### Midtrans Payment
+### 4. 🔧 Utility Functions Enhancement
 
-1.  Get Server Key & Client Key from [Midtrans Dashboard](https://dashboard.midtrans.com/).
-2.  In LMS, go to **Midtrans Settings**.
-3.  Enter credentials and enable the gateway.
+**Location:** `frontend/src/utils/index.js`
 
-## 📦 Docker Commands
+-   `getSidebarLinks()` - Returns grouped sidebar links for role-based navigation
+-   `formatRupiah()` - Indonesian Rupiah currency formatting
 
--   **Migrate Database**: `docker compose exec backend bench --site lms.localhost migrate`
--   **View Logs**: `docker compose logs -f`
--   **Restart Services**: `docker compose restart`
+---
 
-## 🤝 Contribution
+## 🖥️ Server Requirements
 
-Developed by **Antigravity** for **Ablarsy Academy**.
-For issues, please open a ticket in the repository.
+### Chromium Installation (Required for Certificate PDF)
+
+```bash
+# For Docker environment
+docker exec -u root -it lms-frappe-1 bash -c "apt-get update && apt-get install -y chromium chromium-driver"
+```
+
+### Chromium Path Configuration
+
+Add to `site_config.json` or `common_site_config.json`:
+
+```json
+{
+	"chromium_binary_path": "/usr/bin/chromium"
+}
+```
+
+---
+
+## 🚀 Deployment
+
+### Docker Deployment
+
+1. **Clone repository:**
+
+```bash
+git clone https://github.com/alwnarrsyid/ablarsy-academy.git lms
+cd lms
+```
+
+2. **Build frontend:**
+
+```bash
+docker exec lms-frappe-1 bash -c "cd /home/frappe/frappe-bench/apps/lms/frontend && yarn build"
+```
+
+3. **Copy build files:**
+
+```bash
+docker exec lms-frappe-1 bash -c "cp /home/frappe/frappe-bench/apps/lms/frontend/dist/index.html /home/frappe/frappe-bench/apps/lms/lms/public/frontend/"
+docker exec lms-frappe-1 bash -c "cp -r /home/frappe/frappe-bench/apps/lms/frontend/dist/assets /home/frappe/frappe-bench/apps/lms/lms/public/frontend/"
+docker exec lms-frappe-1 bash -c "cp /home/frappe/frappe-bench/apps/lms/lms/public/frontend/index.html /home/frappe/frappe-bench/apps/lms/lms/www/lms.html"
+```
+
+4. **Bench build:**
+
+```bash
+docker exec lms-frappe-1 bash -c "cd /home/frappe/frappe-bench && bench build --force"
+```
+
+5. **Clear cache:**
+
+```bash
+docker ps --format "{{.Names}}" | grep redis | xargs -I {} docker exec {} redis-cli flushall
+docker exec lms-frappe-1 bash -c "cd /home/frappe/frappe-bench && bench --site lms.localhost clear-cache"
+```
+
+6. **Restart:**
+
+```bash
+docker restart lms-frappe-1
+```
+
+---
+
+## 📁 Project Structure
+
+```
+lms/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── MobileLayout.vue          # Mobile navigation
+│   │   │   ├── CertificationLinks.vue    # Certificate download button
+│   │   │   ├── CourseCardOverlay.vue     # Course card actions
+│   │   │   └── Modals/
+│   │   │       └── Event.vue             # Evaluation modal
+│   │   ├── pages/
+│   │   │   ├── ProfileCertificates.vue   # User certificates list
+│   │   │   └── CourseCertification.vue   # Course certification page
+│   │   └── utils/
+│   │       └── index.js                  # Utility functions
+│   └── ...
+├── lms/
+│   ├── lms/
+│   │   ├── custom_certificate.py         # Custom PDF generator
+│   │   ├── gateways/
+│   │   │   └── midtrans_gateway.py       # Midtrans integration
+│   │   └── doctype/
+│   │       └── lms_certificate/
+│   │           └── lms_certificate.js    # Desk UI integration
+│   ├── www/
+│   │   └── certificate.py                # Certificate redirect handler
+│   └── templates/
+│       └── emails/
+│           └── certification.html        # Certificate email template
+└── ...
+```
+
+---
+
+## 🔐 Environment Variables
+
+| Variable                 | Description          | Required |
+| ------------------------ | -------------------- | -------- |
+| `MIDTRANS_SERVER_KEY`    | Midtrans Server Key  | Yes      |
+| `MIDTRANS_CLIENT_KEY`    | Midtrans Client Key  | Yes      |
+| `MIDTRANS_IS_PRODUCTION` | Production mode flag | Yes      |
+
+---
+
+## 📝 Changelog
+
+### v2.43.0 (2024-12-18)
+
+-   ✅ Added custom landscape certificate PDF generator
+-   ✅ Integrated Midtrans payment gateway
+-   ✅ Optimized mobile layout navigation
+-   ✅ Enhanced sidebar links for role-based access
+-   ✅ PWA improvements
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+-   [Frappe LMS](https://github.com/frappe/lms) - Base LMS framework
+-   [Midtrans](https://midtrans.com) - Indonesian payment gateway
+-   [Frappe Framework](https://frappeframework.com) - Backend framework
+
+---
+
+## 📞 Support
+
+For support, email alwanforjobs@gmail.com or create an issue in this repository.
