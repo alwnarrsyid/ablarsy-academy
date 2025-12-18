@@ -1,27 +1,41 @@
-version: "3.7"
 name: lms
 services:
     mariadb:
         image: mariadb:10.8
+        restart: always
         command:
             - --character-set-server=utf8mb4
             - --collation-server=utf8mb4_unicode_ci
             - --skip-character-set-client-handshake
             - --skip-innodb-read-only-compressed # Temporary fix for MariaDB 10.6
         environment:
-            MYSQL_ROOT_PASSWORD: 123
+            MYSQL_ROOT_PASSWORD: "lms0526397841@"
         volumes:
             - mariadb-data:/var/lib/mysql
         networks:
             - default
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-plms0526397841@"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 60s
 
     redis:
         image: redis:alpine
+        restart: always
         networks:
             - default
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
 
     frappe:
         image: frappe/bench:latest
+        restart: always
         command: bash /workspace/init.sh
         environment:
             - SHELL=/bin/bash
@@ -35,9 +49,22 @@ services:
             - "traefik.http.routers.lms.tls=true"
             - "traefik.http.routers.lms.tls.certresolver=mytlschallenge"
             - "traefik.http.services.lms.loadbalancer.server.port=8000"
+            # Timeout settings untuk mencegah Gateway Timeout
+            - "traefik.http.services.lms.loadbalancer.responseForwarding.flushInterval=100ms"
         networks:
             - default
             - root_default
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 120s
+        depends_on:
+            mariadb:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
 
 volumes:
     mariadb-data:

@@ -210,7 +210,7 @@ const tabsStructure = computed(() => {
 				{
 					label: 'Zoom Accounts',
 					description:
-						'Manage zoom accounts to conduct live classes from batches',
+						'Manage Zoom accounts for live classes. Google Meet uses simple link (no setup needed)',
 					icon: 'Video',
 					template: markRaw(ZoomSettings),
 				},

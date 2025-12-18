@@ -1,12 +1,14 @@
 #!/bin/bash
 
 if [ -d "/home/frappe/frappe-bench/apps/frappe" ]; then
-    echo "Bench already exists, skipping init"
-    cd frappe-bench
+    echo "Bench already exists, starting..."
+    cd /home/frappe/frappe-bench
     bench start
-else
-    echo "Creating new bench..."
+    exit 0
 fi
+
+# Kode di bawah hanya dijalankan saat pertama kali (bench belum ada)
+echo "Creating new bench..."
 
 export PATH="${NVM_DIR}/versions/node/v${NODE_VERSION_DEVELOP}/bin/:${PATH}"
 
@@ -28,7 +30,7 @@ bench get-app lms
 
 bench new-site lms.localhost \
 --force \
---mariadb-root-password 123 \
+--mariadb-root-password 'lms0526397841@' \
 --admin-password admin \
 --no-mariadb-socket
 

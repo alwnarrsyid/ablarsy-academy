@@ -82,7 +82,25 @@
 							type="select"
 							:options="getRecordingOptions()"
 							:label="__('Auto Recording')"
+							v-if="liveClass.meeting_platform === 'Zoom'"
 						/>
+						<!-- Google Meet Link Field -->
+						<div v-if="liveClass.meeting_platform === 'Google Meet'" class="space-y-1.5">
+							<label class="block text-ink-gray-5 text-xs">
+								{{ __('Google Meet Link') }}
+								<span class="text-ink-red-3">*</span>
+							</label>
+							<FormControl
+								v-model="liveClass.google_meet_link"
+								type="text"
+								placeholder="https://meet.google.com/xxx-xxxx-xxx"
+							/>
+							<p class="text-xs text-ink-gray-4">
+								{{ __('Create a meeting at') }}
+								<a href="https://meet.google.com/new" target="_blank" class="text-blue-600 hover:underline">meet.google.com/new</a>
+								{{ __('and paste the link here') }}
+							</p>
+						</div>
 					</div>
 				</div>
 				<FormControl
@@ -106,8 +124,8 @@ import {
 import { reactive, inject, onMounted, computed, watch } from 'vue'
 import { getTimezones, getUserTimezone } from '@/utils/'
 
-const liveClasses = defineModel('reloadLiveClasses')
 const show = defineModel()
+const emit = defineEmits(['reload'])
 const user = inject('$user')
 const dayjs = inject('$dayjs')
 
@@ -143,7 +161,8 @@ let liveClass = reactive({
 	auto_recording: 'No Recording',
 	batch: props.batch,
 	host: user.data?.name || '',
-	meeting_platform: getDefaultPlatform(),
+	meeting_platform: 'Zoom',
+	google_meet_link: '',
 })
 
 onMounted(() => {
@@ -157,21 +176,10 @@ watch(() => [props.zoomAccount, props.googleMeetAccount], () => {
 })
 
 const getPlatformOptions = () => {
-	const options = []
-	if (props.zoomAccount) {
-		options.push({ label: 'Zoom', value: 'Zoom' })
-	}
-	if (props.googleMeetAccount) {
-		options.push({ label: 'Google Meet', value: 'Google Meet' })
-	}
-	// If no accounts configured, show all options
-	if (options.length === 0) {
-		options.push(
-			{ label: 'Zoom', value: 'Zoom' },
-			{ label: 'Google Meet', value: 'Google Meet' }
-		)
-	}
-	return options
+	return [
+		{ label: 'Zoom', value: 'Zoom' },
+		{ label: 'Google Meet', value: 'Google Meet' }
+	]
 }
 
 const getTimezoneOptions = () => {
@@ -213,18 +221,24 @@ const createZoomLiveClass = createResource({
 })
 
 const createGoogleMeetLiveClass = createResource({
-	url: 'lms.lms.doctype.lms_batch.lms_batch.create_google_meet_live_class',
+	url: 'frappe.client.insert',
 	makeParams(values) {
 		return {
-			batch_name: values.batch,
-			google_meet_account: props.googleMeetAccount,
-			title: values.title,
-			duration: values.duration,
-			date: values.date,
-			time: values.time,
-			timezone: values.timezone,
-			auto_recording: values.auto_recording,
-			description: values.description,
+			doc: {
+				doctype: 'LMS Live Class',
+				batch_name: values.batch,
+				title: values.title,
+				duration: values.duration,
+				date: values.date,
+				time: values.time,
+				timezone: values.timezone,
+				host: values.host,
+				description: values.description,
+				meeting_platform: 'Google Meet',
+				google_meet_link: values.google_meet_link,
+				join_url: values.google_meet_link,
+				start_url: values.google_meet_link,
+			}
 		}
 	},
 })
@@ -239,7 +253,7 @@ const submitLiveClass = (close) => {
 			validateFormFields()
 		},
 		onSuccess() {
-			liveClasses.value.reload()
+			emit('reload')
 			refreshForm()
 			close()
 		},
@@ -284,8 +298,14 @@ const validateFormFields = () => {
 	if (liveClass.meeting_platform === 'Zoom' && !props.zoomAccount) {
 		return __('Please add a Zoom account to the batch first.')
 	}
-	if (liveClass.meeting_platform === 'Google Meet' && !props.googleMeetAccount) {
-		return __('Please add a Google Meet account to the batch first.')
+	if (liveClass.meeting_platform === 'Google Meet' && !liveClass.google_meet_link) {
+		return __('Please enter a Google Meet link.')
+	}
+	// Validate Google Meet link format
+	if (liveClass.meeting_platform === 'Google Meet' && liveClass.google_meet_link) {
+		if (!liveClass.google_meet_link.includes('meet.google.com')) {
+			return __('Please enter a valid Google Meet link.')
+		}
 	}
 }
 
@@ -311,7 +331,8 @@ const refreshForm = () => {
 	liveClass.duration = ''
 	liveClass.timezone = getUserTimezone()
 	liveClass.auto_recording = 'No Recording'
-	liveClass.meeting_platform = getDefaultPlatform()
+	liveClass.meeting_platform = 'Zoom'
+	liveClass.google_meet_link = ''
 }
 </script>
 

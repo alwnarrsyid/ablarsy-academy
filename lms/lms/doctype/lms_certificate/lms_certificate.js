@@ -21,10 +21,11 @@ frappe.ui.form.on("LMS Certificate", {
 	},
 	refresh: (frm) => {
 		if (frm.doc.name)
+			// Use custom endpoint for proper landscape PDF generation
 			frm.add_web_link(
-				`/api/method/frappe.utils.print_format.download_pdf?doctype=LMS+Certificate&name=${
+				`/api/method/lms.lms.custom_certificate.download_certificate_pdf?certificate_name=${
 					frm.doc.name
-				}&format=${encodeURIComponent(frm.doc.template)}`,
+				}`,
 				"See on Website"
 			);
 	},

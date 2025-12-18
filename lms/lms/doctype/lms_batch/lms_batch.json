@@ -26,7 +26,9 @@
   "description",
   "column_break_hlqw",
   "instructors",
+  "default_meeting_platform",
   "zoom_account",
+  "default_google_meet_link",
   "google_meet_account",
   "section_break_rgfj",
   "medium",
@@ -361,13 +363,29 @@
    "fieldname": "zoom_account",
    "fieldtype": "Link",
    "label": "Zoom Account",
-   "options": "LMS Zoom Settings"
+   "options": "LMS Zoom Settings",
+   "depends_on": "eval:doc.default_meeting_platform=='Zoom'"
   },
   {
    "fieldname": "google_meet_account",
    "fieldtype": "Link",
    "label": "Google Meet Account",
-   "options": "LMS Google Meet Settings"
+   "options": "LMS Google Meet Settings",
+   "hidden": 1
+  },
+  {
+   "default": "Zoom",
+   "fieldname": "default_meeting_platform",
+   "fieldtype": "Select",
+   "label": "Default Meeting Platform",
+   "options": "Zoom\nGoogle Meet"
+  },
+  {
+   "fieldname": "default_google_meet_link",
+   "fieldtype": "Data",
+   "label": "Google Meet Link",
+   "depends_on": "eval:doc.default_meeting_platform=='Google Meet'",
+   "description": "Paste your Google Meet link here (e.g., https://meet.google.com/xxx-xxxx-xxx)"
   }
  ],
  "grid_page_length": 50,

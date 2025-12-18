@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Certificate of Completion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,600;1,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Shadcn-like Color Tokens customized for Ablarsy Branding */
+        --background: #ffffff;
+        --foreground: #1e293b; /* Slate 800 - High contrast text */
+        --muted: #f8fafc;
+        --muted-foreground: #64748b; /* Slate 500 */
+        --border: #e2e8f0;
+        --card: #ffffff;
+        
+        /* Logo-based Primary Color (Deep Indigo/Violet) */
+        --primary: #4338ca; /* Indigo 700 */
+        --primary-foreground: #ffffff;
+        
+        --accent: #eef2ff; /* Indigo 50 */
+      }
+
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--muted);
+        color: var(--foreground);
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .certificate-container {
+        width: 297mm; /* A4 Landscape width */
+        height: 210mm; /* A4 Landscape height */
+        background-color: var(--background);
+        position: relative;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        padding: 40px;
+        overflow: hidden;
+      }
+
+      /* Decorative Border similar to a refined UI card */
+      .certificate-border {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        bottom: 20px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .header {
+        text-align: center;
+        margin-top: 40px;
+      }
+
+      .logo-placeholder {
+        width: 60px;
+        height: 60px;
+        background-color: var(--foreground);
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 10v6M2 10v6'/%3E%3Cpath d='M20 21a2 2 0 0 1-2-2v-3.851c0-.312.162-.601.433-.772l1.134-.715a2 2 0 0 0 .933-2.029l-.5-4a2 2 0 0 0-1.896-1.633h-1.071a2 2 0 0 0-2 2V12c0 2.21-1.79 4-4 4s-4-1.79-4-4V8c0-1.105-.895-2-2-2h-1.071a2 2 0 0 0-1.897 1.633l-.5 4a2 2 0 0 0 .933 2.029l1.134.715c.271.171.433.46.433.772V19a2 2 0 0 1-2 2'/%3E%3C/svg%3E");
+        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 10v6M2 10v6'/%3E%3Cpath d='M20 21a2 2 0 0 1-2-2v-3.851c0-.312.162-.601.433-.772l1.134-.715a2 2 0 0 0 .933-2.029l-.5-4a2 2 0 0 0-1.896-1.633h-1.071a2 2 0 0 0-2 2V12c0 2.21-1.79 4-4 4s-4-1.79-4-4V8c0-1.105-.895-2-2-2h-1.071a2 2 0 0 0-1.897 1.633l-.5 4a2 2 0 0 0 .933 2.029l1.134.715c.271.171.433.46.433.772V19a2 2 0 0 1-2 2'/%3E%3C/svg%3E");
+        mask-repeat: no-repeat;
+        mask-position: center;
+
+        /* Fallback generic styling if mask fails/is not needed */
+        border-radius: 50%;
+        margin: 0 auto 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .title {
+        font-family: "Libre Baskerville", serif; /* Highly readable, premium serif */
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: #000000; /* Normal Black */
+        margin: 0;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+
+      .subtitle {
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--muted-foreground);
+        margin-top: 10px;
+        font-weight: 500;
+      }
+
+      .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 60px;
+      }
+
+      .presented-to {
+        font-size: 1.125rem;
+        color: var(--muted-foreground);
+        margin-bottom: 20px;
+      }
+
+      .recipient-name {
+        font-family: "Libre Baskerville", serif;
+        font-size: 2.75rem; /* Larger for readability */
+        font-weight: 700;
+        color: #000000; /* Normal Black */
+        margin: 16px 0 24px 0;
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 8px;
+        min-width: 500px;
+      }
+
+      .completion-text {
+        font-size: 1.125rem;
+        color: var(--muted-foreground);
+        margin: 20px 0;
+        max-width: 600px;
+        line-height: 1.6;
+      }
+
+      .course-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c2c2c; /* Creamy Black */
+        margin-bottom: 8px;
+      }
+
+      .batch-name {
+        font-size: 1.125rem;
+        color: #ffffff;
+        font-weight: 600;
+        background-color: #2c2c2c; /* Creamy Black */
+        padding: 8px 24px;
+        border-radius: 9999px;
+        display: inline-block;
+        margin-top: 10px;
+      }
+
+      .footer {
+        margin-top: auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 0 40px 40px;
+      }
+
+      .footer-column {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .signature-block {
+        text-align: center;
+        min-width: 200px;
+      }
+
+      .signature-line {
+        height: 1px;
+        background-color: var(--foreground);
+        margin-bottom: 8px;
+        width: 100%;
+      }
+
+      .signature-title {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--foreground);
+      }
+
+      .meta-info {
+        font-size: 0.75rem;
+        color: var(--muted-foreground);
+        text-align: left;
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 4px 16px;
+      }
+
+      .meta-label {
+        font-weight: 600;
+      }
+
+      .badge-icon {
+        /* A simulated badge or seal */
+        width: 80px;
+        height: 80px;
+        border: 2px solid var(--border);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted-foreground);
+        font-size: 0.7em;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        transform: rotate(-15deg);
+        position: absolute;
+        bottom: 60px;
+        right: 60px;
+        opacity: 0.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="display: none;">
+      {% set certificate = frappe.db.get_value("LMS Certificate", doc.name, ["name", "member", "issue_date", "expiry_date", "course"], as_dict=True) %}
+      {% set member = frappe.db.get_value("User", doc.member, ["full_name"], as_dict=True) %}
+      {% set course = frappe.db.get_value("LMS Course", doc.course, ["title", "name", "image"], as_dict=True) %}
+      {% set logo = frappe.db.get_single_value("Website Settings", "banner_image") %}
+      {% set instructors = frappe.get_all("Course Instructor", {"parent": doc.course}, pluck="instructor", order_by="idx") %}
+    </div>
+    <div class="certificate-container">
+      <!-- Decorative Border -->
+      <div class="certificate-border"></div>
+
+      <!-- Header -->
+      <div class="header">
+        <!-- <div class="logo-placeholder"></div> -->
+        <!-- SVG Icon for 'Academic' feeling -->
+<img src="logo.png" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 24px; object-fit: contain;">
+        <h1 class="title">Certificate of Completion</h1>
+        <div class="subtitle">Proudly Presented To</div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <div class="recipient-name">{{ member.full_name }}</div>
+
+        <p class="completion-text">
+          For successfully completing the course requirements and demonstrating
+          proficiency in the curriculum prescribed for
+        </p>
+
+        <div class="course-name">{{ course.title }}</div>
+        {% if doc.batch_name %}
+        <div class="batch-name">{{ doc.batch_name }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="footer-column">
+          <div class="meta-info">
+            <span class="meta-label">Certificate ID:</span>
+            <span>{{ doc.name }}</span>
+
+            <span class="meta-label">Issued By:</span>
+            <span>Ablarsy Academy</span>
+
+            <span class="meta-label">Recipient:</span>
+            <span>{{ doc.member }}</span>
+
+            <span class="meta-label">Created On:</span>
+            <span>{{ doc.creation }}</span>
+          </div>
+        </div>
+
+        <div class="footer-column" style="align-items: flex-end">
+          <!-- Signature Placeholder -->
+          <div class="signature-block">
+            <!-- Replace with actual signature image if needed -->
+            <div
+              style="
+                font-family: 'Playfair Display', cursive;
+                font-size: 24px;
+                margin-bottom: 4px;
+              "
+            >
+              {% for i in instructors %}
+              {{ frappe.db.get_value("User", i, "full_name") }}
+              {% if not loop.last %}, {% endif %}
+              {% endfor %}
+            </div>
+            <div class="signature-line"></div>
+            <div class="signature-title">Course Instructor</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Optional Seal/Badge -->
+      <div class="badge-icon">
+        <div style="text-align: center">Official<br />Verified</div>
+      </div>
+    </div>
+  </body>
+</html>

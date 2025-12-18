@@ -177,10 +177,10 @@ class MidtransController:
                 }
             ],
             "callbacks": {
-                # Use localhost for callback URLs (user's browser is on localhost)
-                "finish": f"http://localhost:8000{kwargs.get('redirect_to', '/lms/courses')}",
-                "error": "http://localhost:8000/lms/payment-error",
-                "pending": "http://localhost:8000/lms/payment-pending",
+                # Use dynamic site URL for callback URLs
+                "finish": get_url(kwargs.get('redirect_to', '/lms/courses')),
+                "error": get_url('/lms/courses'),
+                "pending": get_url('/lms/courses'),
             },
             # Custom fields for webhook verification
             "custom_field1": kwargs.get("payment", ""),

@@ -102,63 +102,85 @@
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 						<div class="space-y-4">
 							<FormControl
-								:label="__('Billing Name')"
+								:label="__('Billing Name') + ' *'"
 								v-model="billingDetails.billing_name"
+								placeholder="Masukkan nama lengkap"
 							/>
 							<FormControl
-								:label="__('Address Line 1')"
-								v-model="billingDetails.address_line1"
+								:label="__('Address') + ' *'"
+								type="textarea"
+								v-model="billingDetails.address"
+								placeholder="Masukkan alamat lengkap (jalan, nomor rumah, RT/RW, dll)"
+								:rows="3"
+							/>
+							<div class="space-y-2">
+								<label class="block text-xs text-ink-gray-5">{{ __('Search Location') }}</label>
+								<div class="relative">
+									<FormControl
+										v-model="locationSearch"
+										@input="searchLocation"
+										placeholder="Ketik nama desa, kecamatan, atau kota..."
+										autocomplete="off"
+									/>
+									<div
+										v-if="locationResults.length > 0"
+										class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
+									>
+										<div
+											v-for="loc in locationResults"
+											:key="loc.name"
+											@click="selectLocation(loc)"
+											class="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+										>
+											<div class="font-medium text-ink-gray-9">{{ loc.village }}, {{ loc.district }}</div>
+											<div class="text-sm text-ink-gray-5">{{ loc.city }}, {{ loc.province }}</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<FormControl
+								:label="__('Village')"
+								v-model="billingDetails.village"
+								:disabled="true"
 							/>
 							<FormControl
-								:label="__('Address Line 2')"
-								v-model="billingDetails.address_line2"
-							/>
-							<FormControl :label="__('City')" v-model="billingDetails.city" />
-							<FormControl
-								:label="__('State/Province')"
-								v-model="billingDetails.state"
+								:label="__('District')"
+								v-model="billingDetails.district"
+								:disabled="true"
 							/>
 						</div>
 						<div class="space-y-4">
-							<Link
-								doctype="Country"
-								:value="billingDetails.country"
-								@change="(option) => changeCurrency(option)"
-								:label="__('Country')"
+							<FormControl
+								:label="__('City/Regency')"
+								v-model="billingDetails.city"
+								:disabled="true"
+							/>
+							<FormControl
+								:label="__('Province')"
+								v-model="billingDetails.state"
+								:disabled="true"
 							/>
 							<FormControl
 								:label="__('Postal Code')"
 								v-model="billingDetails.pincode"
+								placeholder="Masukkan kode pos (opsional)"
 							/>
 							<FormControl
 								:label="__('Phone Number')"
 								v-model="billingDetails.phone"
+								placeholder="08xxxxxxxxxx"
 							/>
 							<Link
 								doctype="LMS Source"
 								:value="billingDetails.source"
 								@change="(option) => (billingDetails.source = option)"
-								:label="__('Where did you hear about us?')"
-							/>
-							<FormControl
-								v-if="billingDetails.country == 'India'"
-								:label="__('GST Number')"
-								v-model="billingDetails.gstin"
-							/>
-							<FormControl
-								v-if="billingDetails.country == 'India'"
-								:label="__('PAN Number')"
-								v-model="billingDetails.pan"
+								:label="__('Where did you hear about us?') + ' *'"
 							/>
 						</div>
 					</div>
 					<div class="flex items-center justify-between border-t pt-4 mt-8">
 						<p class="text-ink-gray-5">
-							{{
-								__(
-									'Make sure to enter the correct billing name as the same will be used in your invoice.'
-								)
-							}}
+							{{ __('Make sure to enter the correct billing name as the same will be used in your invoice.') }}
 						</p>
 						<Button variant="solid" size="md" @click="generatePaymentLink()">
 							{{ __('Proceed to Payment') }}
@@ -311,19 +333,52 @@ const orderSummary = createResource({
 
 const appliedCoupon = ref(null)
 const billingDetails = reactive({})
+const locationSearch = ref('')
+const locationResults = ref([])
+let searchTimeout = null
 
 const setBillingDetails = (data) => {
 	billingDetails.billing_name = data?.billing_name || ''
-	billingDetails.address_line1 = data?.address_line1 || ''
-	billingDetails.address_line2 = data?.address_line2 || ''
+	billingDetails.address = data?.address_line1 || ''
+	billingDetails.village = data?.village || ''
+	billingDetails.district = data?.district || ''
 	billingDetails.city = data?.city || ''
 	billingDetails.state = data?.state || ''
-	billingDetails.country = data?.country || ''
+	billingDetails.country = 'Indonesia'
 	billingDetails.pincode = data?.pincode || ''
 	billingDetails.phone = data?.phone || ''
 	billingDetails.source = data?.source || ''
-	billingDetails.gstin = data?.gstin || ''
-	billingDetails.pan = data?.pan || ''
+}
+
+const searchLocation = () => {
+	// Debounce search
+	if (searchTimeout) clearTimeout(searchTimeout)
+
+	if (!locationSearch.value || locationSearch.value.length < 2) {
+		locationResults.value = []
+		return
+	}
+
+	searchTimeout = setTimeout(async () => {
+		try {
+			const results = await call('lms.lms.doctype.indonesia_location.indonesia_location.search_location', {
+				query: locationSearch.value
+			})
+			locationResults.value = results || []
+		} catch (e) {
+			console.error('Location search error:', e)
+			locationResults.value = []
+		}
+	}, 300)
+}
+
+const selectLocation = (loc) => {
+	billingDetails.village = loc.village
+	billingDetails.district = loc.district
+	billingDetails.city = loc.city
+	billingDetails.state = loc.province
+	locationSearch.value = `${loc.village}, ${loc.district}, ${loc.city}`
+	locationResults.value = []
 }
 
 const paymentLink = createResource({
@@ -349,10 +404,6 @@ const paymentLink = createResource({
 
 const generatePaymentLink = async () => {
 	// Validate first
-	if (!billingDetails.source) {
-		toast.error(__('Please let us know where you heard about us from.'))
-		return
-	}
 	const validationError = validateAddress()
 	if (validationError) {
 		toast.error(validationError)
@@ -410,9 +461,6 @@ const generatePaymentLink = async () => {
 		{},
 		{
 			validate() {
-				if (!billingDetails.source) {
-					return __('Please let us know where you heard about us from.')
-				}
 				return validateAddress()
 			},
 			onSuccess(data) {
@@ -439,69 +487,16 @@ function removeCoupon() {
 }
 
 const validateAddress = () => {
-	let mandatoryFields = [
-		'billing_name',
-		'address_line1',
-		'city',
-		'pincode',
-		'country',
-		'phone',
-		'source',
-	]
-	for (let field of mandatoryFields) {
-		if (!billingDetails[field])
-			return (
-				'Please enter a valid ' +
-				field
-					.replaceAll('_', ' ')
-					.toLowerCase()
-					.replace(/\b\w/g, (s) => s.toUpperCase())
-			)
+	// Mandatory fields: Billing Name, Address, Source
+	if (!billingDetails.billing_name) {
+		return 'Silakan masukkan Nama Billing'
 	}
-
-	if (billingDetails.gstin && !billingDetails.pan)
-		return 'Please enter a valid pan number.'
-
-	if (billingDetails.country == 'India' && !billingDetails.state)
-		return 'Please enter a valid state with correct spelling and the first letter capitalized.'
-
-	const states = [
-		'Andhra Pradesh',
-		'Arunachal Pradesh',
-		'Assam',
-		'Bihar',
-		'Chhattisgarh',
-		'Delhi',
-		'Goa',
-		'Gujarat',
-		'Haryana',
-		'Himachal Pradesh',
-		'Jammu and Kashmir',
-		'Jharkhand',
-		'Karnataka',
-		'Kerala',
-		'Madhya Pradesh',
-		'Maharashtra',
-		'Manipur',
-		'Meghalaya',
-		'Mizoram',
-		'Nagaland',
-		'Odisha',
-		'Punjab',
-		'Rajasthan',
-		'Sikkim',
-		'Tamil Nadu',
-		'Telangana',
-		'Tripura',
-		'Uttar Pradesh',
-		'Uttarakhand',
-		'West Bengal',
-	]
-	if (
-		billingDetails.country == 'India' &&
-		!states.includes(billingDetails.state)
-	)
-		return 'Please enter a valid state with correct spelling and the first letter capitalized.'
+	if (!billingDetails.address) {
+		return 'Silakan masukkan Alamat'
+	}
+	if (!billingDetails.source) {
+		return 'Silakan pilih dari mana Anda mengetahui kami'
+	}
 }
 
 const showError = (err) => {

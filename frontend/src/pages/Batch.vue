@@ -1,5 +1,6 @@
 <template>
-	<div v-if="isAdmin || isStudent" class="">
+	<div>
+		<div v-if="isAdmin || isStudent" class="">
 		<header
 			class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-3 py-2.5 sm:px-5"
 		>
@@ -32,7 +33,7 @@
 					:tabs="tabs"
 					tablistClass="overflow-y-hidden bg-surface-white"
 				>
-					<template #tab="{ tab, selected }" class="overflow-x-hidden">
+					<template #tab="{ tab, selected }">
 						<div>
 							<button
 								class="group -mb-px flex items-center gap-1 border-b border-transparent py-2.5 text-base text-ink-gray-5 duration-300 ease-in-out hover:border-outline-gray-3 hover:text-ink-gray-9"
@@ -118,6 +119,7 @@
 						>
 							<UserAvatar
 								v-for="instructor in batch.data.instructors"
+								:key="instructor.instructor || instructor"
 								:user="instructor"
 							/>
 						</div>
@@ -202,11 +204,12 @@
 			</div>
 		</div>
 	</div>
-	<BulkCertificates
-		v-if="batch.data"
-		v-model="openCertificateDialog"
-		:batch="batch.data"
-	/>
+		<BulkCertificates
+			v-if="batch.data"
+			v-model="openCertificateDialog"
+			:batch="batch.data"
+		/>
+	</div>
 </template>
 <script setup>
 import { computed, inject, ref, onMounted, watch } from 'vue'

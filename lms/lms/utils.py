@@ -1271,7 +1271,7 @@ def get_lesson(course, chapter, lesson):
 	course_info = frappe.db.get_value(
 		"LMS Course",
 		course,
-		["title", "paid_certificate", "disable_self_learning"],
+		["title", "paid_certificate", "disable_self_learning", "paid_course", "course_price", "currency"],
 		as_dict=1,
 	)
 
@@ -1286,6 +1286,9 @@ def get_lesson(course, chapter, lesson):
 			"title": lesson_details.title,
 			"course_title": course_info.title,
 			"disable_self_learning": course_info.disable_self_learning,
+			"paid_course": course_info.paid_course,
+			"course_price": course_info.course_price,
+			"currency": course_info.currency,
 		}
 
 	lesson_details = frappe.db.get_value(
@@ -1397,6 +1400,10 @@ def get_batch_details(batch):
 		],
 		as_dict=True,
 	)
+
+	# Return None if batch not found
+	if not batch_details:
+		return None
 
 	batch_details.instructors = get_instructors("LMS Batch", batch)
 	batch_details.accept_enrollments = batch_details.start_date > getdate()

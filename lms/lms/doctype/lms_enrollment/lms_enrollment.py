@@ -11,6 +11,42 @@ class LMSEnrollment(Document):
 	def validate(self):
 		self.validate_membership_in_same_batch()
 		self.validate_membership_in_different_batch_same_course()
+		self.validate_payment_for_paid_course()
+
+	def validate_payment_for_paid_course(self):
+		"""Ensure payment is complete before enrolling in a paid course."""
+		# Skip validation for moderators/admins
+		if frappe.session.user == "Administrator":
+			return
+		if "Moderator" in frappe.get_roles(frappe.session.user):
+			return
+		if "VIP Student" in frappe.get_roles(frappe.session.user):
+			return
+
+		course_details = frappe.db.get_value(
+			"LMS Course",
+			self.course,
+			["paid_course", "title"],
+			as_dict=True,
+		)
+
+		if course_details and course_details.paid_course:
+			payment = frappe.db.exists(
+				"LMS Payment",
+				{
+					"payment_for_document_type": "LMS Course",
+					"payment_for_document": self.course,
+					"member": self.member or frappe.session.user,
+					"payment_received": 1,
+				},
+			)
+
+			if not payment:
+				frappe.throw(
+					_("You need to complete the payment for '{0}' before enrolling.").format(
+						course_details.title
+					)
+				)
 
 	def on_update(self):
 		update_program_progress(self.member)
@@ -119,10 +155,10 @@ def validate_course_enrollment_eligibility(course, member):
 		payment = frappe.db.exists(
 			"LMS Payment",
 			{
-				"reference_doctype": "LMS Course",
-				"reference_docname": course,
+				"payment_for_document_type": "LMS Course",
+				"payment_for_document": course,
 				"member": member,
-				"payment_receipt": True,
+				"payment_received": 1,
 			},
 		)
 

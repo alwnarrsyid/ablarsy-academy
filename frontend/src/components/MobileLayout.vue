@@ -104,13 +104,25 @@ watch(showMenu, (val) => {
 })
 
 const filterLinksToShow = (data) => {
+	console.log('filterLinksToShow called with:', data)
+	console.log('sidebarLinks before filter:', JSON.stringify(sidebarLinks.value.map(l => l.label)))
+
 	Object.keys(data).forEach((key) => {
-		if (!parseInt(data[key])) {
-			sidebarLinks.value = sidebarLinks.value.filter(
-				(link) => link.label.toLowerCase().split(' ').join('_') !== key
-			)
+		// Skip non-boolean/number keys like 'web_pages'
+		if (typeof data[key] === 'object') return
+
+		// Convert to number and check if it's falsy (0 or undefined)
+		const value = Number(data[key])
+		if (value === 0 || isNaN(value)) {
+			const keyNormalized = key.toLowerCase().replace(/_/g, ' ')
+			sidebarLinks.value = sidebarLinks.value.filter((link) => {
+				const labelNormalized = link.label.toLowerCase()
+				return labelNormalized !== keyNormalized && labelNormalized.split(' ').join('_') !== key
+			})
 		}
 	})
+
+	console.log('sidebarLinks after filter:', JSON.stringify(sidebarLinks.value.map(l => l.label)))
 }
 
 const addOtherLinks = () => {

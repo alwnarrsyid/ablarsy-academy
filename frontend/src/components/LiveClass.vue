@@ -1,14 +1,5 @@
 <template>
-	<div
-		v-if="hasPermission() && !hasMeetingAccount()"
-		class="flex items-center space-x-2 mb-5 bg-surface-amber-1 py-1 px-2 rounded-md text-ink-amber-3 text-xs"
-	>
-		<AlertCircle class="size-4 stroke-1.5" />
-		<span>
-			{{ __('Please add a Zoom or Google Meet account to the batch to create live classes.') }}
-		</span>
-	</div>
-
+	<div>
 	<div class="flex items-center justify-between">
 		<div class="text-lg font-semibold text-ink-gray-9">
 			{{ __('Live Class') }}
@@ -28,6 +19,7 @@
 	>
 		<div
 			v-for="cls in liveClasses.data"
+			:key="cls.name || cls.title"
 			class="flex flex-col border rounded-md h-full text-ink-gray-7 hover:border-outline-gray-3 p-3"
 			:class="{
 				'cursor-pointer': hasPermission() && cls.attendees > 0,
@@ -109,15 +101,17 @@
 		{{ __('No live classes scheduled') }}
 	</div>
 
-	<LiveClassModal
-		:batch="props.batch"
-		:zoomAccount="props.zoomAccount"
-		:googleMeetAccount="props.googleMeetAccount"
-		v-model="showLiveClassModal"
-		v-model:reloadLiveClasses="liveClasses"
-	/>
+		<LiveClassModal
+			:batch="props.batch"
+			:zoomAccount="props.zoomAccount"
+			:googleMeetAccount="props.googleMeetAccount"
+			v-model="showLiveClassModal"
+			:liveClasses="liveClasses"
+			@reload="liveClasses.reload()"
+		/>
 
-	<LiveClassAttendance v-model="showAttendance" :live_class="attendanceFor" />
+		<LiveClassAttendance v-model="showAttendance" :live_class="attendanceFor" />
+	</div>
 </template>
 <script setup>
 import { createListResource, Button, Tooltip } from 'frappe-ui'
@@ -128,7 +122,6 @@ import {
 	Video,
 	Monitor,
 	Info,
-	AlertCircle,
 } from 'lucide-vue-next'
 import { inject, ref } from 'vue'
 import { formatTime } from '@/utils/'
@@ -183,7 +176,6 @@ const hasMeetingAccount = () => {
 
 const canCreateClass = () => {
 	if (readOnlyMode) return false
-	if (!hasMeetingAccount()) return false
 	return hasPermission()
 }
 
@@ -232,6 +224,7 @@ const openAttendanceModal = (cls) => {
 .short-introduction {
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
+	line-clamp: 2;
 	-webkit-box-orient: vertical;
 	text-overflow: ellipsis;
 	width: 100%;

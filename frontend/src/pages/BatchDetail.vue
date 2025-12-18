@@ -1,5 +1,24 @@
 <template>
-	<div v-if="batch.data" class="">
+	<!-- Loading State -->
+	<div v-if="batch.loading" class="flex items-center justify-center min-h-[50vh]">
+		<div class="text-center">
+			<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+			<p class="mt-4 text-ink-gray-5">{{ __('Loading batch details...') }}</p>
+		</div>
+	</div>
+	<!-- Error State -->
+	<div v-else-if="batch.error || (!batch.loading && !batch.data)" class="flex items-center justify-center min-h-[50vh]">
+		<div class="text-center">
+			<div class="text-6xl mb-4">📚</div>
+			<h2 class="text-xl font-semibold text-ink-gray-9 mb-2">{{ __('Batch Not Found') }}</h2>
+			<p class="text-ink-gray-5 mb-4">{{ __('The batch you are looking for does not exist or is not published.') }}</p>
+			<router-link :to="{ name: 'Batches' }" class="text-blue-600 hover:underline">
+				{{ __('← Back to Batches') }}
+			</router-link>
+		</div>
+	</div>
+	<!-- Content -->
+	<div v-else-if="batch.data" class="">
 		<header
 			class="sticky top-0 z-10 border-b bg-surface-white px-3 py-2.5 sm:px-5"
 		>
@@ -23,6 +42,7 @@
 						>
 							<UserAvatar
 								v-for="instructor in batch.data.instructors"
+								:key="instructor.instructor || instructor"
 								:user="instructor"
 							/>
 						</div>
@@ -45,22 +65,23 @@
 					</div>
 				</div>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-5">
-					<div
-						v-if="batch.data.courses"
-						v-for="course in courses.data"
-						:key="course.course"
-					>
-						<router-link
-							:to="{
-								name: 'CourseDetail',
-								params: {
-									courseName: course.name,
-								},
-							}"
+					<template v-if="batch.data.courses && courses.data">
+						<div
+							v-for="course in courses.data"
+							:key="course.name || course.course"
 						>
-							<CourseCard :course="course" :key="course.name" />
-						</router-link>
-					</div>
+							<router-link
+								:to="{
+									name: 'CourseDetail',
+									params: {
+										courseName: course.name,
+									},
+								}"
+							>
+								<CourseCard :course="course" />
+							</router-link>
+						</div>
+					</template>
 				</div>
 				<div v-if="batch.data.batch_details_raw">
 					<div
@@ -103,10 +124,8 @@ const batch = createResource({
 		batch: props.batchName,
 	},
 	auto: true,
-	onSuccess: (data) => {
-		if (!data) {
-			router.push({ name: 'Batches' })
-		}
+	onError: (error) => {
+		console.error('Error fetching batch details:', error)
 	},
 })
 

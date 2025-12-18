@@ -166,27 +166,43 @@
 								}
 							"
 						/>
-							<Link
-								doctype="LMS Zoom Settings"
-								:label="__('Zoom Account')"
-								v-model="batch.zoom_account"
-								:onCreate="
-									(value, close) => {
-										openSettings('Zoom Accounts', close)
-									}
-								"
+						<FormControl
+							v-model="batch.default_meeting_platform"
+							type="select"
+							:options="[
+								{ label: 'Zoom', value: 'Zoom' },
+								{ label: 'Google Meet', value: 'Google Meet' },
+							]"
+							:label="__('Default Meeting Platform')"
+							class="mb-4"
+						/>
+						<Link
+							v-if="batch.default_meeting_platform === 'Zoom'"
+							doctype="LMS Zoom Settings"
+							:label="__('Zoom Account')"
+							v-model="batch.zoom_account"
+							:onCreate="
+								(value, close) => {
+									openSettings('Zoom Accounts', close)
+								}
+							"
+						/>
+						<div v-if="batch.default_meeting_platform === 'Google Meet'" class="space-y-1.5">
+							<label class="block text-ink-gray-5 text-xs">
+								{{ __('Google Meet Link') }}
+							</label>
+							<FormControl
+								v-model="batch.default_google_meet_link"
+								type="text"
+								placeholder="https://meet.google.com/xxx-xxxx-xxx"
 							/>
-							<Link
-								doctype="LMS Google Meet Settings"
-								:label="__('Google Meet Account')"
-								v-model="batch.google_meet_account"
-								:onCreate="
-									(value, close) => {
-										openSettings('Google Meet Settings', close)
-									}
-								"
-							/>
+							<p class="text-xs text-ink-gray-4">
+								{{ __('Create a meeting at') }}
+								<a href="https://meet.google.com/new" target="_blank" class="text-blue-600 hover:underline">meet.google.com/new</a>
+								{{ __('and paste the link here') }}
+							</p>
 						</div>
+					</div>
 					<div class="space-y-5">
 						<FormControl
 							v-model="batch.medium"
@@ -396,6 +412,8 @@ const batch = reactive({
 	amount: 0,
 	zoom_account: '',
 	google_meet_account: '',
+	default_meeting_platform: 'Zoom',
+	default_google_meet_link: '',
 })
 
 const meta = reactive({

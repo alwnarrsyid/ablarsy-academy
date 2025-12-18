@@ -370,10 +370,11 @@ watch(show, () => {
 })
 
 const openCertificate = (certificate) => {
+	// Use custom endpoint for proper landscape PDF generation
 	window.open(
-		`/api/method/frappe.utils.print_format.download_pdf?doctype=LMS+Certificate&name=${
+		`/api/method/lms.lms.custom_certificate.download_certificate_pdf?certificate_name=${
 			certificate.name
-		}&format=${encodeURIComponent(certificate.template)}`
+		}`
 	)
 }
 

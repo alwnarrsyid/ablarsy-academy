@@ -86,7 +86,7 @@
 						@click="enrollStudent()"
 						variant="solid"
 					>
-						{{ __('Start Learning') }}
+						{{ lesson.data.paid_course ? __('Buy Course') : __('Start Learning') }}
 					</Button>
 					<Badge
 						theme="blue"
@@ -792,11 +792,24 @@ const enrollment = createResource({
 })
 
 const enrollStudent = () => {
+	// If course is paid, redirect to billing page for payment
+	if (lesson.data.paid_course) {
+		router.push({
+			name: 'Billing',
+			params: { type: 'course', name: props.courseName },
+		})
+		return
+	}
+
 	enrollment.submit(
 		{},
 		{
 			onSuccess() {
 				window.location.reload()
+			},
+			onError(error) {
+				// Show error message if enrollment fails
+				console.error('Enrollment failed:', error)
 			},
 		}
 	)
