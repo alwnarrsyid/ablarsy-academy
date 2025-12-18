@@ -116,76 +116,28 @@ class MidtransController:
         order_id = f"LMS-{kwargs.get('payment', random_string(10))}-{now_datetime().strftime('%Y%m%d%H%M%S')}"
 
         # Prepare transaction data
-        # Inline email validation (handle non-email usernames like 'Administrator')
-        import re
-        payer_email = kwargs.get("payer_email", "")
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not payer_email or not re.match(email_pattern, payer_email):
-            # Try to get actual email from User document
-            user = frappe.session.user
-            if user and user != "Guest":
-                user_email = frappe.db.get_value("User", user, "email")
-                if user_email and re.match(email_pattern, user_email):
-                    payer_email = user_email
-                else:
-                    payer_email = "customer@example.com"
-            else:
-                payer_email = "customer@example.com"
-
-        # Get item details based on reference_doctype (Course, Batch, etc.)
-        reference_doctype = kwargs.get("reference_doctype", "LMS Course")
-        reference_docname = kwargs.get("reference_docname", "")
-        item_name = kwargs.get("title", "Course Purchase")[:50]  # Midtrans name limit 50 chars
-        item_category = "Course"
-        item_url = get_url(kwargs.get("redirect_to", "/lms/courses"))
-
-        # Try to get more details from the actual document
-        if reference_doctype == "LMS Course" and reference_docname:
-            try:
-                course = frappe.get_doc("LMS Course", reference_docname)
-                item_name = (course.title or reference_docname)[:50]
-                item_category = course.category or "Course"
-            except Exception:
-                pass
-        elif reference_doctype == "LMS Batch" and reference_docname:
-            try:
-                batch = frappe.get_doc("LMS Batch", reference_docname)
-                item_name = (batch.title or reference_docname)[:50]
-                item_category = "Batch"
-            except Exception:
-                pass
-
-        # Build transaction data per Midtrans API Reference
         transaction_data = {
-            "transaction_details": {
-                "order_id": order_id,
-                "gross_amount": amount
-            },
+            "transaction_details": {"order_id": order_id, "gross_amount": amount},
             "customer_details": {
                 "first_name": kwargs.get("payer_name", "Customer"),
-                "email": payer_email,
+                "email": kwargs.get("payer_email", ""),
             },
             "item_details": [
                 {
-                    "id": reference_docname or "ITEM",
+                    "id": kwargs.get("reference_docname", "COURSE"),
                     "price": amount,
                     "quantity": 1,
-                    "name": item_name,
-                    "category": item_category,
-                    "merchant_name": "LMS",
-                    "url": item_url
+                    "name": kwargs.get("title", "Course Purchase")[:50],  # Midtrans name limit
                 }
             ],
             "callbacks": {
-                # Use dynamic site URL for callback URLs
-                "finish": get_url(kwargs.get('redirect_to', '/lms/courses')),
-                "error": get_url('/lms/courses'),
-                "pending": get_url('/lms/courses'),
+                "finish": get_url(kwargs.get("redirect_to", "/lms/courses")),
+                "error": get_url("/lms/payment-error"),
+                "pending": get_url("/lms/payment-pending"),
             },
-            # Custom fields for webhook verification
             "custom_field1": kwargs.get("payment", ""),
-            "custom_field2": reference_doctype,
-            "custom_field3": reference_docname,
+            "custom_field2": kwargs.get("reference_doctype", ""),
+            "custom_field3": kwargs.get("reference_docname", ""),
         }
 
         try:
@@ -199,8 +151,17 @@ class MidtransController:
             result = response.json()
 
             if "token" in result:
-                # Note: Skipping database save for midtrans_order_id/midtrans_token
-                # as those columns don't exist yet. Token is stored in redirect_url.
+                # Store the order_id in the payment record for later verification
+                if kwargs.get("payment"):
+                    frappe.db.set_value(
+                        "LMS Payment",
+                        kwargs.get("payment"),
+                        {
+                            "midtrans_order_id": order_id,
+                            "midtrans_token": result.get("token"),
+                        },
+                    )
+
                 return {
                     "token": result.get("token"),
                     "redirect_url": result.get("redirect_url"),
@@ -325,19 +286,11 @@ def handle_webhook():
             frappe.log_error("Invalid Midtrans signature", "Midtrans Webhook Error")
             return {"status": "error", "message": "Invalid signature"}
 
-        # Find the payment record using custom_field1 (which contains payment name)
-        # Fallback: try parsing order_id format "LMS-{payment_name}-{timestamp}"
-        payment_name = data.get("custom_field1", "")
+        # Find the payment record
+        payment_name = frappe.db.get_value("LMS Payment", {"midtrans_order_id": order_id}, "name")
 
-        if not payment_name and order_id:
-            # Try to extract payment name from order_id
-            # Format: LMS-{payment_name}-{timestamp}
-            parts = order_id.split("-")
-            if len(parts) >= 2:
-                payment_name = parts[1]
-
-        if not payment_name or not frappe.db.exists("LMS Payment", payment_name):
-            frappe.log_error(f"Payment not found for order_id: {order_id}, custom_field1: {data.get('custom_field1')}", "Midtrans Webhook Error")
+        if not payment_name:
+            frappe.log_error(f"Payment not found for order_id: {order_id}", "Midtrans Webhook Error")
             return {"status": "error", "message": "Payment not found"}
 
         # Update payment status based on transaction status
@@ -432,26 +385,17 @@ def enroll_in_course_midtrans(course, payment_name, member):
 def enroll_in_batch_midtrans(batch, payment_name, member):
     """Enroll user in a batch after successful Midtrans payment."""
     if not frappe.db.exists("LMS Batch Enrollment", {"member": member, "batch": batch}):
-        # Run as the member user to bypass permission checks
-        original_user = frappe.session.user
-        frappe.set_user(member)
-
-        try:
-            enrollment = frappe.new_doc("LMS Batch Enrollment")
-            payment = frappe.db.get_value("LMS Payment", payment_name, ["name", "source"], as_dict=True)
-            enrollment.update(
-                {
-                    "member": member,
-                    "batch": batch,
-                    "payment": payment.name,
-                    "source": payment.source if payment else None,
-                }
-            )
-            enrollment.flags.ignore_permissions = True
-            enrollment.save(ignore_permissions=True)
-        finally:
-            # Restore original user
-            frappe.set_user(original_user)
+        enrollment = frappe.new_doc("LMS Batch Enrollment")
+        payment = frappe.db.get_value("LMS Payment", payment_name, ["name", "source"], as_dict=True)
+        enrollment.update(
+            {
+                "member": member,
+                "batch": batch,
+                "payment": payment.name,
+                "source": payment.source if payment else None,
+            }
+        )
+        enrollment.save(ignore_permissions=True)
 
 
 @frappe.whitelist()
