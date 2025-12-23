@@ -337,6 +337,54 @@ def process_successful_payment(payment_name, data):
     payment.payment_received = 1
     payment.midtrans_transaction_id = data.get("transaction_id", "")
     payment.midtrans_payment_type = data.get("payment_type", "")
+
+    # Extract detailed payment method information
+    payment_type = data.get("payment_type", "")
+
+    # Bank Transfer (VA)
+    if payment_type == "bank_transfer":
+        va_numbers = data.get("va_numbers", [])
+        if va_numbers:
+            payment.midtrans_bank = va_numbers[0].get("bank", "").upper()
+            payment.midtrans_va_number = va_numbers[0].get("va_number", "")
+        # Permata Bank uses different structure
+        permata_va = data.get("permata_va_number", "")
+        if permata_va:
+            payment.midtrans_bank = "PERMATA"
+            payment.midtrans_va_number = permata_va
+
+    # E-Channel (Mandiri Bill)
+    elif payment_type == "echannel":
+        payment.midtrans_bank = "MANDIRI"
+        payment.midtrans_va_number = data.get("bill_key", "")
+
+    # QRIS
+    elif payment_type == "qris":
+        payment.midtrans_issuer = data.get("issuer", "QRIS")
+        payment.midtrans_acquirer = data.get("acquirer", "")
+
+    # GoPay
+    elif payment_type == "gopay":
+        payment.midtrans_issuer = "GoPay"
+
+    # ShopeePay
+    elif payment_type == "shopeepay":
+        payment.midtrans_issuer = "ShopeePay"
+
+    # Credit Card
+    elif payment_type == "credit_card":
+        payment.midtrans_bank = data.get("bank", "")
+        payment.midtrans_acquirer = data.get("acquirer", "")
+        payment.midtrans_issuer = data.get("card_type", "")
+
+    # CIMB Clicks, BCA KlikPay, etc.
+    elif payment_type in ["cimb_clicks", "bca_klikpay", "bca_klikbca", "bri_epay", "danamon_online"]:
+        payment.midtrans_bank = payment_type.replace("_clicks", "").replace("_klikpay", "").replace("_klikbca", "").replace("_epay", "").replace("_online", "").upper()
+
+    # Akulaku, Kredivo
+    elif payment_type in ["akulaku", "kredivo"]:
+        payment.midtrans_issuer = payment_type.capitalize()
+
     payment.save(ignore_permissions=True)
 
     # Update coupon redemption if applicable
@@ -357,6 +405,13 @@ def process_successful_payment(payment_name, data):
     elif doctype == "LMS Batch":
         # Enroll in batch
         enroll_in_batch_midtrans(docname, payment.name, payment.member)
+
+    # Create referral commission if user was referred
+    try:
+        from lms.lms.api import create_referral_commission
+        create_referral_commission(payment)
+    except Exception as e:
+        frappe.log_error(f"Referral commission creation failed: {str(e)}", "Referral System")
 
 
 def update_certificate_purchase(course, payment_name, member):

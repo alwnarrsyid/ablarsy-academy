@@ -10,20 +10,22 @@
 			{{ __('Create') }}
 		</Button>
 	</header>
-	<div class="py-5 mx-5">
-		<div class="flex items-center justify-between mb-4">
-			<div class="text-lg font-semibold text-ink-gray-7">
+	<div class="p-4 md:p-5 pb-10">
+		<div class="mb-5">
+			<div class="text-lg text-ink-gray-9 font-semibold mb-4">
 				{{
 					quizzes.data?.length
 						? __('{0} Quizzes').format(quizzes.data.length)
 						: __('No Quizzes')
 				}}
 			</div>
-			<FormControl v-model="search" type="text" placeholder="Search">
-				<template #prefix>
-					<FeatherIcon name="search" class="size-4 text-ink-gray-5" />
-				</template>
-			</FormControl>
+			<div class="flex flex-col sm:flex-row gap-3">
+				<FormControl v-model="search" type="text" placeholder="Search" class="w-full sm:w-48">
+					<template #prefix>
+						<FeatherIcon name="search" class="size-4 text-ink-gray-5" />
+					</template>
+				</FormControl>
+			</div>
 		</div>
 		<ListView
 			v-if="quizzes.data?.length"

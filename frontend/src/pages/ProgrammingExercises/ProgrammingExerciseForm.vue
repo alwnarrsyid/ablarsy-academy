@@ -10,7 +10,7 @@
 			</div>
 		</template>
 		<template #body-content>
-			<div class="grid grid-cols-2 gap-10">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-10">
 				<div class="space-y-4">
 					<FormControl
 						v-model="exercise.title"

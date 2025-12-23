@@ -1,3 +1,72 @@
 @import './assets/Inter/inter.css';
 @import 'frappe-ui/style.css';
 @import './styles/codemirror.css';
+
+/*
+ * Global Mobile Responsiveness Fix
+ * Prevents horizontal scroll on mobile devices
+ * This is a safe, minimal approach that won't break other layouts
+ */
+html {
+	overflow-x: hidden;
+}
+
+body {
+	overflow-x: hidden;
+	max-width: 100vw;
+}
+
+/* Main content container - prevent horizontal overflow */
+#scrollContainer {
+	overflow-x: hidden;
+}
+
+/* Batch page tabs - horizontal scroll on mobile */
+.overflow-x-auto {
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none; /* Firefox */
+	-ms-overflow-style: none; /* IE/Edge */
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+	display: none; /* Chrome/Safari */
+}
+
+/* Ensure tabs container uses flex-nowrap */
+.overflow-x-auto > div {
+	display: flex;
+	flex-wrap: nowrap;
+}
+
+/*
+ * Mobile Form Input Fix
+ * Prevents iOS auto-zoom when focusing on input fields
+ * iOS zooms when font-size < 16px, so we ensure all inputs are at least 16px on mobile
+ */
+@media screen and (max-width: 768px) {
+	/* Form inputs - prevent auto-zoom */
+	input[type="text"],
+	input[type="email"],
+	input[type="password"],
+	input[type="number"],
+	input[type="tel"],
+	input[type="url"],
+	input[type="search"],
+	input[type="date"],
+	input[type="time"],
+	input[type="datetime-local"],
+	textarea,
+	select {
+		font-size: 16px !important;
+	}
+
+	/* Frappe-UI FormControl inputs */
+	.form-control input,
+	.form-control textarea,
+	.form-control select,
+	[class*="FormControl"] input,
+	[class*="FormControl"] textarea,
+	[class*="FormControl"] select {
+		font-size: 16px !important;
+	}
+}

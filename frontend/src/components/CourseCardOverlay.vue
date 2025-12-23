@@ -36,9 +36,9 @@
 					</router-link>
 					<CertificationLinks :courseName="course.data.name" class="w-full" />
 				</div>
-				<!-- Show Buy button only for non-admin and non-instructor of this course -->
+				<!-- Show Buy button only for non-admin, non-instructor, and non-VIP of this course -->
 				<router-link
-					v-else-if="course.data.paid_course && !user.data?.is_admin && !is_instructor()"
+					v-else-if="course.data.paid_course && !user.data?.is_admin && !user.data?.is_vip_student && !is_instructor()"
 					:to="{
 						name: 'Billing',
 						params: {
@@ -56,9 +56,9 @@
 						</span>
 					</Button>
 				</router-link>
-				<!-- Admin or Instructor can start directly -->
+				<!-- Admin, VIP Student, or Instructor can start directly -->
 				<Button
-					v-else-if="(user.data?.is_admin || is_instructor()) && !course.data.membership"
+					v-else-if="(user.data?.is_admin || user.data?.is_vip_student || is_instructor()) && !course.data.membership"
 					@click="enrollStudent()"
 					variant="solid"
 					class="w-full"
@@ -68,7 +68,7 @@
 						<BookText class="size-4 stroke-1.5" />
 					</template>
 					<span>
-						{{ user.data?.is_admin ? __('Start Learning (Admin)') : __('Start Learning') }}
+						{{ user.data?.is_admin ? __('Start Learning (Admin)') : user.data?.is_vip_student ? __('Start Learning (VIP)') : __('Start Learning') }}
 					</span>
 				</Button>
 				<Badge
@@ -133,6 +133,21 @@
 						</span>
 					</Button>
 				</router-link>
+				<!-- Share with Referral Button -->
+				<Button
+					v-if="user.data && referralCode"
+					@click="shareWithReferral"
+					variant="subtle"
+					class="w-full mt-2"
+					size="md"
+				>
+					<template #prefix>
+						<Share2 class="size-4 stroke-1.5" />
+					</template>
+					<span>
+						{{ shareButtonText }}
+					</span>
+				</Button>
 			</div>
 			<div class="space-y-4">
 				<div
@@ -198,6 +213,7 @@ import {
 	CreditCard,
 	GraduationCap,
 	Pencil,
+	Share2,
 	Star,
 	TrendingUp,
 	Users,
@@ -214,6 +230,35 @@ const router = useRouter()
 const user = inject('$user')
 const showProgressModal = ref(false)
 const readOnlyMode = window.read_only_mode
+const shareButtonText = ref(__('Share & Earn 10%'))
+const referralCode = ref('')
+
+// Fetch user's referral code
+const referralStats = createResource({
+	url: 'lms.lms.api.get_referral_stats',
+	auto: true,
+	onSuccess(data) {
+		referralCode.value = data?.referral_code || ''
+	},
+})
+
+// Share course with referral code
+const shareWithReferral = async () => {
+	const code = referralCode.value
+	if (!code) return
+
+	const shareUrl = `${window.location.origin}/lms/courses/${props.course.data.name}?ref=${code}`
+
+	try {
+		await navigator.clipboard.writeText(shareUrl)
+		shareButtonText.value = __('Link Copied!')
+		setTimeout(() => {
+			shareButtonText.value = __('Share & Earn 10%')
+		}, 2000)
+	} catch (err) {
+		console.error('Failed to copy:', err)
+	}
+}
 
 const props = defineProps({
 	course: {

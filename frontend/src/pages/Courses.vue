@@ -49,37 +49,35 @@
 			</template>
 		</Dropdown>
 	</header>
-	<div class="p-5 pb-10">
-		<div
-			class="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:items-center justify-between mb-5"
-		>
-			<div class="text-lg text-ink-gray-9 font-semibold">
+	<div class="p-4 md:p-5 pb-10">
+		<div class="mb-5">
+			<div class="text-lg text-ink-gray-9 font-semibold mb-4">
 				{{ __('All Courses') }}
 			</div>
-			<div
-				class="flex flex-col space-y-3 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4"
-			>
+
+			<!-- Tabs -->
+			<div class="mb-4">
 				<TabButtons :buttons="courseTabs" v-model="currentTab" class="w-fit" />
+			</div>
 
-				<div class="grid grid-cols-2 gap-2">
-					<FormControl
-						v-model="title"
-						:placeholder="__('Search by Title')"
-						type="text"
-						class="w-full lg:min-w-0 lg:w-32 xl:w-40"
-						@input="updateCourses()"
+			<!-- Filters -->
+			<div class="flex flex-col sm:flex-row gap-3">
+				<FormControl
+					v-model="title"
+					:placeholder="__('Search by Title')"
+					type="text"
+					class="w-full sm:w-48"
+					@input="updateCourses()"
+				/>
+				<div class="w-full sm:w-48">
+					<Select
+						v-if="categories.length"
+						v-model="currentCategory"
+						:options="categories"
+						:placeholder="__('Category')"
+						@change="updateCourses()"
 					/>
-					<div class="w-full lg:min-w-0 lg:w-32 xl:w-40">
-						<Select
-							v-if="categories.length"
-							v-model="currentCategory"
-							:options="categories"
-							:placeholder="__('Category')"
-							@change="updateCourses()"
-						/>
-					</div>
 				</div>
-
 				<FormControl
 					v-model="certification"
 					:label="__('Certification')"

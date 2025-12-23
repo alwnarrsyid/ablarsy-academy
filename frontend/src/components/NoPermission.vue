@@ -1,5 +1,5 @@
 <template>
-	<div class="border rounded-md w-1/3 mx-auto my-32">
+	<div class="border rounded-md w-[90%] sm:w-2/3 md:w-1/2 lg:w-1/3 mx-auto my-32">
 		<div class="border-b px-5 py-3 font-medium text-ink-gray-9">
 			<span
 				class="inline-flex items-center before:bg-surface-red-5 before:w-2 before:h-2 before:rounded-md before:mr-2"

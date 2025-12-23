@@ -19,7 +19,7 @@
 			{{ __('Settings') }}
 		</Button>
 	</div>
-	<div class="grid grid-cols-2 h-[calc(100vh_-_3rem)]">
+	<div class="grid grid-cols-1 md:grid-cols-2 h-auto md:h-[calc(100vh_-_3rem)]">
 		<div class="border-r py-5 px-8 h-full">
 			<div class="font-semibold mb-2 text-ink-gray-9">
 				{{ __('Problem Statement') }}

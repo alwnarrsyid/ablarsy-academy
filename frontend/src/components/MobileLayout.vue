@@ -1,6 +1,6 @@
 <template>
         <div class="flex h-full flex-col relative">
-                <div class="h-full pb-10" id="scrollContainer">
+                <div class="h-full pb-20" id="scrollContainer">
                         <slot />
                 </div>
 
@@ -196,7 +196,7 @@ const addPrograms = async () => {
         let canAddProgram = await checkIfCanAddProgram()
         if (!canAddProgram) return
         let activeFor = ['Programs', 'ProgramDetail']
-        
+
         // Find Learning group and add Programs to it
         const learningGroup = sidebarLinks.value.find(g => g.label === 'Learning')
         if (learningGroup && learningGroup.items) {

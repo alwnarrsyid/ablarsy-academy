@@ -24,33 +24,28 @@
 				</Button>
 			</router-link>
 		</header>
-		<div>
-			<div
-				class="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:items-center justify-between w-full md:w-4/5 mx-auto p-5"
-			>
-				<div class="text-xl font-semibold text-ink-gray-7 mb-4 md:mb-0">
+		<div class="p-4 md:p-5 pb-10">
+			<div class="mb-5">
+				<div class="text-lg text-ink-gray-9 font-semibold mb-4">
 					{{ __('{0} Open Jobs').format(jobCount) }}
 				</div>
 
-				<div class="flex items-center justify-between space-x-4">
-					<TabButtons
-						v-if="tabs.length > 1"
-						v-model="activeTab"
-						:buttons="tabs"
-						@change="updateJobs"
-					/>
+				<!-- Tabs -->
+				<div class="mb-4" v-if="tabs.length > 1">
+					<TabButtons v-model="activeTab" :buttons="tabs" @change="updateJobs" class="w-fit" />
+				</div>
+
+				<!-- Filters -->
+				<div class="flex flex-col sm:flex-row gap-3">
 					<FormControl
 						type="text"
 						:placeholder="__('Search')"
 						v-model="searchQuery"
-						class="min-w-40 lg:min-w-0 lg:w-32 xl:w-40"
+						class="w-full sm:w-48"
 						@input="updateJobs"
 					>
 						<template #prefix>
-							<Search
-								class="w-4 h-4 stroke-1.5 text-ink-gray-5"
-								name="search"
-							/>
+							<Search class="w-4 h-4 stroke-1.5 text-ink-gray-5" name="search" />
 						</template>
 					</FormControl>
 					<Link
@@ -58,13 +53,13 @@
 						doctype="Country"
 						v-model="country"
 						:placeholder="__('Country')"
-						class="min-w-32 lg:min-w-0 lg:w-32 xl:w-32"
+						class="w-full sm:w-40"
 					/>
 					<FormControl
 						v-model="jobType"
 						type="select"
 						:options="jobTypes"
-						class="min-w-32 lg:min-w-0 lg:w-32 xl:w-32"
+						class="w-full sm:w-32"
 						:placeholder="__('Type')"
 						@change="updateJobs"
 					/>
@@ -72,25 +67,22 @@
 						v-model="workMode"
 						type="select"
 						:options="workModes"
-						class="min-w-32 lg:min-w-0 lg:w-32 xl:w-32"
+						class="w-full sm:w-36"
 						:placeholder="__('Work Mode')"
 						@change="updateJobs"
 					/>
 				</div>
 			</div>
-			<div v-if="jobs.data?.length" class="w-full md:w-4/5 mx-auto p-5 pt-0">
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-					<router-link
-						v-for="job in jobs.data"
-						:to="{
-							name: 'JobDetail',
-							params: { job: job.name },
-						}"
-						:key="job.name"
-					>
-						<JobCard :job="job" />
-					</router-link>
-				</div>
+
+			<!-- Job Cards -->
+			<div v-if="jobs.data?.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				<router-link
+					v-for="job in jobs.data"
+					:to="{ name: 'JobDetail', params: { job: job.name } }"
+					:key="job.name"
+				>
+					<JobCard :job="job" />
+				</router-link>
 			</div>
 			<EmptyState v-else type="Job Openings" />
 		</div>

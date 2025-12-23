@@ -53,6 +53,14 @@ export function formatNumber(number) {
 
 export function formatNumberIntoCurrency(number, currency) {
 	if (number) {
+		// Handle IDR with Indonesian format: Rp 150.000
+		if (currency === 'IDR') {
+			const formatted = Number(number).toLocaleString('id-ID', {
+				maximumFractionDigits: 0,
+			})
+			return `Rp ${formatted}`
+		}
+		// Default format for other currencies
 		return number.toLocaleString('en-IN', {
 			maximumFractionDigits: 0,
 			style: 'currency',
@@ -431,25 +439,16 @@ const getSidebarItems = () => {
 					label: 'Home',
 					icon: 'Home',
 					to: 'Home',
-					condition: () => {
-						return userResource?.data
-					},
 				},
 				{
 					label: 'Search',
 					icon: 'Search',
 					to: 'Search',
-					condition: () => {
-						return userResource?.data
-					},
 				},
 				{
 					label: 'Notifications',
 					icon: 'Bell',
 					to: 'Notifications',
-					condition: () => {
-						return userResource?.data
-					},
 				},
 			],
 		},

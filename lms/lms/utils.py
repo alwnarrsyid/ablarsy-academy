@@ -2104,6 +2104,13 @@ def get_payment_details(payment_name):
 
 
 def validate_enrollment_eligibility(batch_doc, payment_doc=None):
+	# Skip validation for admins and VIP students
+	if frappe.session.user == "Administrator":
+		return
+	user_roles = frappe.get_roles(frappe.session.user)
+	if "System Manager" in user_roles or "Moderator" in user_roles or "VIP Student" in user_roles:
+		return
+
 	if frappe.db.exists("LMS Batch Enrollment", {"batch": batch_doc.name, "member": frappe.session.user}):
 		frappe.throw(_("You are already enrolled in this batch."))
 

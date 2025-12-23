@@ -21,10 +21,19 @@ def validate_username_duplicates(doc, method):
 
 def after_insert(doc, method):
 	doc.add_roles("LMS Student")
+	# Auto-generate referral code for new users
+	try:
+		from lms.lms.api import generate_referral_code
+		if not doc.referral_code:
+			referral_code = generate_referral_code(doc.name)
+			frappe.db.set_value("User", doc.name, "referral_code", referral_code, update_modified=False)
+			frappe.db.commit()
+	except Exception as e:
+		frappe.log_error(f"Failed to generate referral code for {doc.name}: {str(e)}", "Referral Code Error")
 
 
 @frappe.whitelist(allow_guest=True)
-def sign_up(email, full_name, verify_terms, user_category):
+def sign_up(email, full_name, verify_terms, user_category, referred_by_code=None):
 	if is_signup_disabled():
 		frappe.throw(_("Sign Up is disabled"), _("Not Allowed"))
 
@@ -44,6 +53,11 @@ def sign_up(email, full_name, verify_terms, user_category):
 				http_status_code=429,
 			)
 
+	# Find referrer by code
+	referred_by = None
+	if referred_by_code:
+		referred_by = frappe.db.get_value("User", {"referral_code": referred_by_code}, "name")
+
 	user = frappe.get_doc(
 		{
 			"doctype": "User",
@@ -55,6 +69,7 @@ def sign_up(email, full_name, verify_terms, user_category):
 			"enabled": 1,
 			"new_password": random_string(10),
 			"user_type": "Website User",
+			"referred_by": referred_by,  # Set referrer
 		}
 	)
 	user.flags.ignore_permissions = True
@@ -69,10 +84,18 @@ def sign_up(email, full_name, verify_terms, user_category):
 	user.add_roles("LMS Student")
 	set_country_from_ip(None, user.name)
 
-	if user.flags.email_sent:
-		return 1, _("Please check your email for verification")
-	else:
-		return 2, _("Please ask your administrator to verify your sign-up")
+	# Generate referral code for new user (backup in case after_insert doesn't work)
+	try:
+		from lms.lms.api import generate_referral_code
+		if not frappe.db.get_value("User", user.name, "referral_code"):
+			referral_code = generate_referral_code(user.name)
+			frappe.db.set_value("User", user.name, "referral_code", referral_code, update_modified=False)
+			frappe.db.commit()
+	except Exception:
+		pass  # Silently fail, can be generated later
+
+	# Return success with email for OTP verification redirect
+	return 1, {"message": _("Please check your email for verification"), "email": email}
 
 
 def set_country_from_ip(login_manager=None, user=None):

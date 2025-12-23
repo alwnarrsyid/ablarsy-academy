@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Kebijakan Privasi - Ablarsy Academy</title>
+	<link rel="icon" href="/assets/lms/images/favicon.ico" type="image/x-icon">
+	<style>
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+			background-color: #f8f9fa;
+			color: #333;
+			line-height: 1.6;
+		}
+
+		/* Header */
+		.header {
+			background: #fff;
+			border-bottom: 1px solid #e9ecef;
+			padding: 12px 5vw;
+			position: sticky;
+			top: 0;
+			z-index: 100;
+		}
+		.header-content {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+		}
+		.back-btn {
+			width: 32px;
+			height: 32px;
+			border: none;
+			background: transparent;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			color: #666;
+			padding: 0;
+			transition: color 0.15s;
+		}
+		.back-btn:hover {
+			color: #1a1a1a;
+		}
+		.back-btn svg {
+			width: 24px;
+			height: 24px;
+		}
+		.logo-section {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			text-decoration: none;
+			color: #333;
+		}
+		.logo-section img {
+			width: 28px;
+			height: 28px;
+		}
+		.logo-text {
+			font-weight: 600;
+			font-size: 14px;
+		}
+
+		/* Main Container */
+		.container {
+			padding: 24px 5vw;
+		}
+
+		/* Page Title */
+		.page-title {
+			text-align: center;
+			margin-bottom: 32px;
+		}
+		.page-title h1 {
+			font-size: clamp(20px, 4vw, 28px);
+			font-weight: 600;
+			margin-bottom: 8px;
+		}
+		.page-title p {
+			font-size: 14px;
+			color: #6c757d;
+		}
+
+		/* Tabs Container */
+		.tabs-wrapper {
+			background: #fff;
+			border: 1px solid #e9ecef;
+			border-radius: 12px;
+			overflow: hidden;
+		}
+
+		/* Tab Navigation */
+		.tab-nav {
+			display: flex;
+			border-bottom: 1px solid #e9ecef;
+			background: #fafafa;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+		}
+		.tab-nav::-webkit-scrollbar {
+			display: none;
+		}
+		.tab-btn {
+			flex: 1;
+			min-width: 100px;
+			padding: 14px 20px;
+			border: none;
+			background: transparent;
+			font-size: 13px;
+			font-weight: 500;
+			color: #6c757d;
+			cursor: pointer;
+			white-space: nowrap;
+			transition: all 0.2s;
+			position: relative;
+		}
+		.tab-btn:hover {
+			color: #333;
+			background: #fff;
+		}
+		.tab-btn.active {
+			color: #1a1a1a;
+			background: #fff;
+		}
+		.tab-btn.active::after {
+			content: '';
+			position: absolute;
+			bottom: -1px;
+			left: 0;
+			right: 0;
+			height: 2px;
+			background: #1a1a1a;
+		}
+
+		/* Tab Content */
+		.tab-content {
+			display: none;
+			padding: clamp(20px, 4vw, 40px);
+			animation: fadeIn 0.3s ease;
+		}
+		.tab-content.active {
+			display: block;
+		}
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateY(8px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		/* Section Styling */
+		.section {
+			margin-bottom: 28px;
+		}
+		.section:last-child {
+			margin-bottom: 0;
+		}
+		.section-title {
+			font-size: clamp(15px, 2vw, 18px);
+			font-weight: 600;
+			color: #1a1a1a;
+			margin-bottom: 12px;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		.section-num {
+			width: 26px;
+			height: 26px;
+			background: #f0f0f0;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 12px;
+			font-weight: 600;
+			color: #666;
+			flex-shrink: 0;
+		}
+		.section-body {
+			font-size: clamp(13px, 1.5vw, 15px);
+			color: #555;
+		}
+		.section-body p {
+			margin-bottom: 12px;
+		}
+		.section-body p:last-child {
+			margin-bottom: 0;
+		}
+		.section-body ul {
+			padding-left: 20px;
+			margin: 8px 0;
+		}
+		.section-body li {
+			margin-bottom: 8px;
+		}
+		.section-body strong {
+			color: #333;
+		}
+
+		/* Subsection */
+		.subsection {
+			margin-top: 16px;
+			padding: 16px 20px;
+			background: #fafafa;
+			border-radius: 8px;
+			border: 1px solid #f0f0f0;
+		}
+		.subsection-title {
+			font-size: 14px;
+			font-weight: 600;
+			color: #333;
+			margin-bottom: 10px;
+		}
+
+		/* Data Table */
+		.data-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 12px;
+			font-size: clamp(12px, 1.5vw, 14px);
+		}
+		.data-table th,
+		.data-table td {
+			padding: 12px 16px;
+			text-align: left;
+			border-bottom: 1px solid #e9ecef;
+		}
+		.data-table th {
+			background: #fafafa;
+			font-weight: 600;
+			color: #333;
+		}
+		.data-table tr:last-child td {
+			border-bottom: none;
+		}
+
+		/* Info Box */
+		.info-box {
+			background: #fff8e6;
+			border: 1px solid #ffe7a0;
+			border-radius: 8px;
+			padding: 12px 16px;
+			margin-top: 16px;
+			font-size: 13px;
+			color: #8a6d00;
+		}
+		.info-box strong {
+			color: #8a6d00;
+		}
+
+		/* Success Box */
+		.success-box {
+			background: #f0f9f0;
+			border: 1px solid #c3e6c3;
+			border-radius: 8px;
+			padding: 12px 16px;
+			margin-top: 16px;
+			font-size: 13px;
+			color: #2d6a2d;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		/* Footer */
+		.footer {
+			text-align: center;
+			padding: 32px 5vw;
+		}
+		.footer-note {
+			font-size: 13px;
+			color: #6c757d;
+			margin-bottom: 16px;
+		}
+		.footer-links {
+			display: flex;
+			justify-content: center;
+			gap: 24px;
+		}
+		.footer-links a {
+			font-size: 13px;
+			color: #6c757d;
+			text-decoration: none;
+		}
+		.footer-links a:hover {
+			color: #333;
+		}
+
+		/* Contact Box */
+		.contact-box {
+			background: #fafafa;
+			border: 1px solid #f0f0f0;
+			border-radius: 8px;
+			padding: 20px;
+			margin-top: 16px;
+		}
+		.contact-item {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 10px;
+			font-size: 14px;
+		}
+		.contact-item:last-child {
+			margin-bottom: 0;
+		}
+		.contact-icon {
+			width: 18px;
+			height: 18px;
+			color: #666;
+		}
+
+		/* Responsive */
+		@media (max-width: 768px) {
+			.header {
+				padding: 12px 4vw;
+			}
+			.container {
+				padding: 20px 4vw;
+			}
+			.tab-btn {
+				padding: 12px 16px;
+				font-size: 12px;
+				min-width: 90px;
+			}
+			.section-body {
+				font-size: 13px;
+			}
+			.data-table th,
+			.data-table td {
+				padding: 10px 12px;
+			}
+		}
+		@media (max-width: 480px) {
+			.header {
+				padding: 10px 16px;
+			}
+			.container {
+				padding: 16px;
+			}
+			.page-title {
+				margin-bottom: 20px;
+			}
+			.tab-btn {
+				min-width: 80px;
+				padding: 10px 12px;
+				font-size: 11px;
+			}
+			.tab-content {
+				padding: 16px;
+			}
+			.subsection {
+				padding: 14px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<!-- Header -->
+	<header class="header">
+		<div class="header-content">
+			<button type="button" class="back-btn" id="backBtn" title="Kembali" aria-label="Kembali ke halaman sebelumnya">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="15 18 9 12 15 6"></polyline>
+				</svg>
+			</button>
+			<a href="/lms" class="logo-section">
+				<img src="/assets/lms/images/logo.png" alt="Logo" onerror="this.style.display='none'">
+				<span class="logo-text">Ablarsy Academy</span>
+			</a>
+		</div>
+	</header>
+
+	<!-- Main Content -->
+	<div class="container">
+		<!-- Page Title -->
+		<div class="page-title">
+			<h1>Kebijakan Privasi</h1>
+			<p>Terakhir diperbarui: 23 Desember 2024</p>
+		</div>
+
+		<!-- Tabs -->
+		<div class="tabs-wrapper">
+			<!-- Tab Navigation -->
+			<div class="tab-nav">
+				<button class="tab-btn active" data-tab="data">Data yang Dikumpulkan</button>
+				<button class="tab-btn" data-tab="penggunaan">Penggunaan Data</button>
+				<button class="tab-btn" data-tab="keamanan">Keamanan</button>
+				<button class="tab-btn" data-tab="hak">Hak Anda</button>
+			</div>
+
+			<!-- Tab: Data yang Dikumpulkan -->
+			<div class="tab-content active" id="tab-data">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">1</span>
+						Pendahuluan
+					</div>
+					<div class="section-body">
+						<p>Ablarsy Academy berkomitmen untuk melindungi privasi Anda. Kebijakan ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi data pribadi Anda.</p>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">2</span>
+						Data yang Kami Kumpulkan
+					</div>
+					<div class="section-body">
+						<div class="subsection">
+							<div class="subsection-title">Informasi Akun</div>
+							<ul>
+								<li>Nama lengkap, email, username</li>
+								<li>Password (terenkripsi)</li>
+								<li>Foto profil & cover image (opsional)</li>
+								<li>Negara dan zona waktu</li>
+							</ul>
+						</div>
+
+						<div class="subsection">
+							<div class="subsection-title">Informasi Profil Tambahan</div>
+							<ul>
+								<li>Kategori pengguna (Student, Employee, dll)</li>
+								<li>Bio/deskripsi diri</li>
+								<li>LinkedIn, GitHub, Medium (opsional)</li>
+								<li>Status pencarian kerja</li>
+							</ul>
+						</div>
+
+						<div class="subsection">
+							<div class="subsection-title">Informasi Pembelajaran</div>
+							<ul>
+								<li>Progress kursus (persentase)</li>
+								<li>Lesson terakhir yang diakses</li>
+								<li>Nilai quiz dan sertifikat</li>
+								<li>Catatan pribadi</li>
+							</ul>
+						</div>
+
+						<div class="subsection">
+							<div class="subsection-title">Informasi Pembayaran</div>
+							<ul>
+								<li>Nama & alamat penagihan</li>
+								<li>Order ID dan Transaction ID (Midtrans)</li>
+								<li>Metode pembayaran (Bank/E-Wallet)</li>
+							</ul>
+							<div class="info-box">
+								<strong>Catatan:</strong> Kami TIDAK menyimpan informasi kartu kredit. Semua proses pembayaran dihandel oleh Midtrans.
+							</div>
+						</div>
+
+						<div class="subsection">
+							<div class="subsection-title">Informasi Referral & Payout</div>
+							<ul>
+								<li>Kode referral unik</li>
+								<li>Metode payout (GoPay, DANA, OVO, Bank Transfer)</li>
+								<li>Nomor telepon e-wallet / rekening bank</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tab: Penggunaan Data -->
+			<div class="tab-content" id="tab-penggunaan">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">3</span>
+						Penggunaan Data
+					</div>
+					<div class="section-body">
+						<p>Kami menggunakan data Anda untuk:</p>
+						<table class="data-table">
+							<thead>
+								<tr>
+									<th>Tujuan</th>
+									<th>Dasar Hukum</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>Mengelola akun Anda</td>
+									<td>Pelaksanaan kontrak</td>
+								</tr>
+								<tr>
+									<td>Memproses pembayaran</td>
+									<td>Pelaksanaan kontrak</td>
+								</tr>
+								<tr>
+									<td>Melacak progress pembelajaran</td>
+									<td>Pelaksanaan kontrak</td>
+								</tr>
+								<tr>
+									<td>Menerbitkan sertifikat</td>
+									<td>Pelaksanaan kontrak</td>
+								</tr>
+								<tr>
+									<td>Mengelola program referral</td>
+									<td>Pelaksanaan kontrak</td>
+								</tr>
+								<tr>
+									<td>Mengirim notifikasi kursus</td>
+									<td>Kepentingan sah</td>
+								</tr>
+								<tr>
+									<td>Mencegah penipuan</td>
+									<td>Kewajiban hukum</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">4</span>
+						Berbagi Data dengan Pihak Ketiga
+					</div>
+					<div class="section-body">
+						<p>Kami dapat berbagi data dengan:</p>
+						<ul>
+							<li><strong>Midtrans</strong> – Payment gateway untuk memproses pembayaran</li>
+							<li><strong>Penyedia Email</strong> – Untuk notifikasi transaksional</li>
+							<li><strong>Google Meet</strong> – Untuk live class</li>
+							<li><strong>Cloud Server</strong> – Tempat data disimpan</li>
+						</ul>
+						<div class="success-box">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+							</svg>
+							<span>Kami <strong>TIDAK</strong> menjual data pribadi Anda kepada pihak ketiga.</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tab: Keamanan -->
+			<div class="tab-content" id="tab-keamanan">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">5</span>
+						Penyimpanan Data
+					</div>
+					<div class="section-body">
+						<p>Data Anda disimpan di server yang berlokasi di <strong>Indonesia atau Asia Tenggara</strong>.</p>
+
+						<div class="subsection">
+							<div class="subsection-title">Langkah Keamanan</div>
+							<ul>
+								<li>Enkripsi SSL/TLS untuk transfer data</li>
+								<li>Enkripsi password dengan hash yang aman</li>
+								<li>Akses terbatas untuk personel berwenang</li>
+								<li>Backup data secara berkala</li>
+								<li>Firewall dan proteksi DDoS</li>
+							</ul>
+						</div>
+
+						<div class="subsection">
+							<div class="subsection-title">Retensi Data</div>
+							<ul>
+								<li><strong>Akun aktif:</strong> Selama akun aktif</li>
+								<li><strong>Akun tidak aktif:</strong> Diarsipkan setelah 2 tahun</li>
+								<li><strong>Data pembayaran:</strong> Minimal 5 tahun (kewajiban pajak)</li>
+								<li><strong>Sertifikat:</strong> Permanen untuk verifikasi</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">6</span>
+						Cookies
+					</div>
+					<div class="section-body">
+						<p>Platform kami menggunakan:</p>
+						<ul>
+							<li><strong>Cookies sesi</strong> – untuk menjaga status login</li>
+							<li><strong>Cookies preferensi</strong> – untuk menyimpan pengaturan tampilan</li>
+						</ul>
+						<p>Anda dapat mengelola cookies melalui pengaturan browser.</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tab: Hak Anda -->
+			<div class="tab-content" id="tab-hak">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">7</span>
+						Hak-Hak Anda
+					</div>
+					<div class="section-body">
+						<table class="data-table">
+							<thead>
+								<tr>
+									<th>Hak</th>
+									<th>Deskripsi</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td><strong>Akses</strong></td>
+									<td>Meminta salinan data pribadi Anda</td>
+								</tr>
+								<tr>
+									<td><strong>Koreksi</strong></td>
+									<td>Memperbaiki data yang tidak akurat</td>
+								</tr>
+								<tr>
+									<td><strong>Penghapusan</strong></td>
+									<td>Meminta penghapusan data (dengan batasan)</td>
+								</tr>
+								<tr>
+									<td><strong>Portabilitas</strong></td>
+									<td>Meminta data dalam format yang dapat dipindahkan</td>
+								</tr>
+								<tr>
+									<td><strong>Keberatan</strong></td>
+									<td>Menolak pemrosesan untuk tujuan tertentu</td>
+								</tr>
+							</tbody>
+						</table>
+						<p style="margin-top: 16px;">Untuk menggunakan hak-hak ini, hubungi <strong>support@ablarsy.com</strong></p>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">8</span>
+						Anak di Bawah Umur
+					</div>
+					<div class="section-body">
+						<p>Platform tidak ditujukan untuk anak di bawah <strong>17 tahun</strong>. Kami tidak sengaja mengumpulkan data dari anak-anak.</p>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">9</span>
+						Kontak
+					</div>
+					<div class="section-body">
+						<p>Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, hubungi:</p>
+						<div class="contact-box">
+							<div class="contact-item">
+								<svg class="contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+									<polyline points="22,6 12,13 2,6"></polyline>
+								</svg>
+								<span>support@ablarsy.com</span>
+							</div>
+							<div class="contact-item">
+								<svg class="contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<circle cx="12" cy="12" r="10"></circle>
+									<line x1="2" y1="12" x2="22" y2="12"></line>
+									<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+								</svg>
+								<span>lms.ablarsy.com</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Footer -->
+	<footer class="footer">
+		<p class="footer-note">Dengan menggunakan Platform Ablarsy Academy, Anda menyetujui pengumpulan dan penggunaan data sesuai Kebijakan Privasi ini.</p>
+		<div class="footer-links">
+			<a href="/terms">Syarat dan Ketentuan</a>
+			<a href="/">Kembali ke Beranda</a>
+		</div>
+	</footer>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			// Back button - handle pages opened in new tab
+			var backBtn = document.getElementById('backBtn');
+			if (backBtn) {
+				backBtn.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+
+					var referrer = document.referrer;
+					var currentHost = window.location.host;
+
+					// If referrer exists and is from same site, go there
+					if (referrer && referrer.indexOf(currentHost) !== -1 && referrer !== window.location.href) {
+						window.location.href = referrer;
+						return;
+					}
+
+					// If page was opened in new tab (history length is 1 or 2), try to close tab
+					if (window.history.length <= 2) {
+						// Try to close the tab (works if opened via window.open or _blank)
+						window.close();
+						// If window.close() didn't work (blocked by browser), redirect to home after small delay
+						setTimeout(function() {
+							window.location.href = '/lms';
+						}, 100);
+						return;
+					}
+
+					// Otherwise, go back in history
+					window.history.back();
+				});
+			}
+
+			// Tabs
+			const tabs = document.querySelectorAll('.tab-btn');
+			const contents = document.querySelectorAll('.tab-content');
+
+			tabs.forEach(tab => {
+				tab.addEventListener('click', function() {
+					const target = this.dataset.tab;
+
+					tabs.forEach(t => t.classList.remove('active'));
+					contents.forEach(c => c.classList.remove('active'));
+
+					this.classList.add('active');
+					document.getElementById('tab-' + target).classList.add('active');
+				});
+			});
+		});
+	</script>
+</body>
+</html>

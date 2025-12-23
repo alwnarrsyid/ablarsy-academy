@@ -85,7 +85,9 @@
 				v-else-if="
 					batch.data.paid_batch &&
 					batch.data.seats_left > 0 &&
-					batch.data.accept_enrollments
+					batch.data.accept_enrollments &&
+					!user.data?.is_admin &&
+					!user.data?.is_vip_student
 				"
 			>
 				<Button v-if="!isStudent" class="w-full mt-4" variant="solid">
@@ -97,6 +99,23 @@
 					</span>
 				</Button>
 			</router-link>
+			<!-- Admin/VIP can enroll in paid batch directly -->
+			<Button
+				variant="solid"
+				class="w-full mt-2"
+				v-else-if="
+					batch.data.paid_batch &&
+					batch.data.seats_left > 0 &&
+					batch.data.accept_enrollments &&
+					(user.data?.is_admin || user.data?.is_vip_student)
+				"
+				@click="enrollInBatch()"
+			>
+				<template #prefix>
+					<GraduationCap class="size-4 stroke-1.5" />
+				</template>
+				{{ user.data?.is_admin ? __('Enroll Now (Admin)') : __('Enroll Now (VIP)') }}
+			</Button>
 			<Button
 				variant="solid"
 				class="w-full mt-2"
@@ -130,11 +149,25 @@
 					</span>
 				</Button>
 			</router-link>
+			<!-- Share with Referral Button -->
+			<Button
+				v-if="user.data && referralCode"
+				@click="shareWithReferral"
+				variant="subtle"
+				class="w-full mt-2"
+			>
+				<template #prefix>
+					<Share2 class="size-4 stroke-1.5" />
+				</template>
+				<span>
+					{{ shareButtonText }}
+				</span>
+			</Button>
 		</div>
 	</div>
 </template>
 <script setup>
-import { inject, computed } from 'vue'
+import { inject, computed, ref } from 'vue'
 import { Button, createResource, toast } from 'frappe-ui'
 import {
 	BookOpen,
@@ -145,6 +178,7 @@ import {
 	LogIn,
 	Pencil,
 	Settings,
+	Share2,
 } from 'lucide-vue-next'
 import { formatNumberIntoCurrency, formatTime } from '@/utils'
 import DateRange from '@/components/Common/DateRange.vue'
@@ -160,6 +194,36 @@ const props = defineProps({
 		default: null,
 	},
 })
+
+const shareButtonText = ref(__('Share & Earn 10%'))
+const referralCode = ref('')
+
+// Fetch user's referral code
+const referralStats = createResource({
+	url: 'lms.lms.api.get_referral_stats',
+	auto: true,
+	onSuccess(data) {
+		referralCode.value = data?.referral_code || ''
+	},
+})
+
+// Share batch with referral code
+const shareWithReferral = async () => {
+	const code = referralCode.value
+	if (!code) return
+
+	const shareUrl = `${window.location.origin}/lms/batches/details/${props.batch.data.name}?ref=${code}`
+
+	try {
+		await navigator.clipboard.writeText(shareUrl)
+		shareButtonText.value = __('Link Copied!')
+		setTimeout(() => {
+			shareButtonText.value = __('Share & Earn 10%')
+		}, 2000)
+	} catch (err) {
+		console.error('Failed to copy:', err)
+	}
+}
 
 const enroll = createResource({
 	url: 'lms.lms.utils.enroll_in_batch',

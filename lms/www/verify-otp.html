@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ _("Verify Email") }} - Ablarsy Academy</title>
+	<link rel="icon" href="/assets/lms/images/favicon.ico" type="image/x-icon">
+	<link rel="stylesheet" href="/assets/frappe/css/frappe-web.bundle.css">
+	<style>
+		* {
+			box-sizing: border-box;
+		}
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+			background-color: #f8f9fa;
+			margin: 0;
+			padding: 0;
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.otp-container {
+			width: 100%;
+			max-width: 400px;
+			padding: 20px;
+		}
+		.logo-section {
+			text-align: center;
+			margin-bottom: 24px;
+		}
+		.logo-section img {
+			width: 48px;
+			height: 48px;
+		}
+		.logo-section .brand-title {
+			margin-top: 12px;
+			font-size: 16px;
+			color: #333;
+		}
+		.logo-section .brand-title .brand-name {
+			color: #198754;
+			font-weight: 500;
+		}
+		.page-card {
+			background: #fff;
+			border: 1px solid #e9ecef;
+			border-radius: 8px;
+			padding: 28px;
+		}
+		.form-title {
+			font-size: 14px;
+			color: #6c757d;
+			margin-bottom: 8px;
+		}
+		.user-email {
+			font-size: 14px;
+			color: #333;
+			font-weight: 500;
+			margin-bottom: 24px;
+		}
+		.form-label {
+			font-size: 13px;
+			color: #6c757d;
+			margin-bottom: 12px;
+			display: block;
+		}
+		.otp-inputs {
+			display: flex;
+			gap: 8px;
+			justify-content: center;
+			margin-bottom: 16px;
+		}
+		.otp-digit {
+			width: 44px;
+			height: 52px;
+			text-align: center;
+			font-size: 20px;
+			font-weight: 600;
+			border: 1px solid #dee2e6;
+			border-radius: 6px;
+			outline: none;
+			transition: border-color 0.15s, box-shadow 0.15s;
+		}
+		.otp-digit:focus {
+			border-color: #333;
+			box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+		}
+		.otp-digit.error {
+			border-color: #dc3545;
+			background-color: #fff5f5;
+		}
+		.error-message {
+			color: #dc3545;
+			font-size: 13px;
+			text-align: center;
+			margin-bottom: 16px;
+			display: none;
+		}
+		.btn-verify {
+			width: 100%;
+			padding: 12px;
+			background-color: #1a1a1a;
+			color: #fff;
+			border: none;
+			border-radius: 6px;
+			font-size: 14px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: background-color 0.15s;
+		}
+		.btn-verify:hover {
+			background-color: #333;
+		}
+		.btn-verify:disabled {
+			background-color: #6c757d;
+			cursor: not-allowed;
+		}
+		.resend-section {
+			text-align: center;
+			margin-top: 20px;
+			font-size: 13px;
+			color: #6c757d;
+		}
+		.resend-section a {
+			color: #333;
+			text-decoration: none;
+		}
+		.resend-section a:hover {
+			text-decoration: underline;
+		}
+		.back-link {
+			text-align: center;
+			margin-top: 16px;
+		}
+		.back-link a {
+			font-size: 13px;
+			color: #6c757d;
+			text-decoration: none;
+		}
+		.back-link a:hover {
+			color: #333;
+		}
+		.success-state {
+			text-align: center;
+			display: none;
+		}
+		.success-icon {
+			width: 64px;
+			height: 64px;
+			margin: 0 auto 16px;
+		}
+		.success-icon svg {
+			width: 100%;
+			height: 100%;
+		}
+		.success-title {
+			font-size: 18px;
+			font-weight: 600;
+			color: #198754;
+			margin-bottom: 8px;
+		}
+		.success-message {
+			font-size: 14px;
+			color: #6c757d;
+		}
+		@media (max-width: 480px) {
+			.otp-container {
+				padding: 16px;
+			}
+			.page-card {
+				padding: 24px 20px;
+			}
+			.otp-digit {
+				width: 40px;
+				height: 48px;
+				font-size: 18px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="otp-container">
+		<!-- Logo -->
+		<div class="logo-section">
+			<img src="/assets/lms/images/logo.png" alt="Logo" onerror="this.style.display='none'">
+			<div class="brand-title">
+				Verify your <span class="brand-name">Ablarsy Academy</span> Account
+			</div>
+		</div>
+
+		<!-- Card -->
+		<div class="page-card">
+			<!-- Form State -->
+			<div id="otp-form">
+				<div class="form-title">
+					{{ _("We sent a 6-digit verification code to") }}
+				</div>
+				<div class="user-email" id="user-email"></div>
+
+				<label class="form-label">{{ _("Verification Code") }}</label>
+				<div class="otp-inputs">
+					<input type="text" class="otp-digit" maxlength="1" data-index="0" inputmode="numeric" autocomplete="one-time-code">
+					<input type="text" class="otp-digit" maxlength="1" data-index="1" inputmode="numeric">
+					<input type="text" class="otp-digit" maxlength="1" data-index="2" inputmode="numeric">
+					<input type="text" class="otp-digit" maxlength="1" data-index="3" inputmode="numeric">
+					<input type="text" class="otp-digit" maxlength="1" data-index="4" inputmode="numeric">
+					<input type="text" class="otp-digit" maxlength="1" data-index="5" inputmode="numeric">
+				</div>
+
+				<div class="error-message" id="error-message"></div>
+
+				<button class="btn-verify" id="verify-btn" disabled>
+					{{ _("Verify Email") }}
+				</button>
+
+				<div class="resend-section">
+					{{ _("Didn't receive the code?") }}
+					<a href="#" id="resend-link">{{ _("Resend") }}</a>
+					<span id="resend-countdown"></span>
+				</div>
+
+				<div class="back-link">
+					<a href="/login">← {{ _("Back to Login") }}</a>
+				</div>
+			</div>
+
+			<!-- Success State -->
+			<div class="success-state" id="success-state">
+				<div class="success-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="#198754" stroke-width="2">
+						<circle cx="12" cy="12" r="10"></circle>
+						<path d="M9 12l2 2 4-4"></path>
+					</svg>
+				</div>
+				<div class="success-title">{{ _("Email Verified!") }}</div>
+				<div class="success-message">{{ _("Redirecting to set your password...") }}</div>
+			</div>
+		</div>
+	</div>
+
+	<script src="/assets/frappe/js/frappe-web.bundle.js"></script>
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		// Get email from URL
+		const urlParams = new URLSearchParams(window.location.search);
+		const email = urlParams.get('email');
+
+		if (!email) {
+			window.location.href = '/login';
+			return;
+		}
+
+		document.getElementById('user-email').textContent = email;
+
+		const digits = document.querySelectorAll('.otp-digit');
+		const verifyBtn = document.getElementById('verify-btn');
+		const errorEl = document.getElementById('error-message');
+		const resendLink = document.getElementById('resend-link');
+		const resendCountdown = document.getElementById('resend-countdown');
+		let countdown = 60;
+		let countdownInterval;
+
+		// Focus first input
+		digits[0].focus();
+
+		// Start countdown
+		startCountdown();
+
+		// Handle input
+		digits.forEach((digit, index) => {
+			digit.addEventListener('input', function(e) {
+				const val = this.value.replace(/\D/g, '');
+				this.value = val;
+				errorEl.style.display = 'none';
+				digits.forEach(d => d.classList.remove('error'));
+
+				if (val && index < 5) {
+					digits[index + 1].focus();
+				}
+
+				checkComplete();
+			});
+
+			digit.addEventListener('keydown', function(e) {
+				if (e.key === 'Backspace' && !this.value && index > 0) {
+					digits[index - 1].focus();
+				}
+			});
+
+			digit.addEventListener('paste', function(e) {
+				e.preventDefault();
+				const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+				pasted.split('').forEach((char, i) => {
+					if (digits[i]) digits[i].value = char;
+				});
+				checkComplete();
+				if (pasted.length === 6) {
+					verifyOtp(pasted);
+				}
+			});
+		});
+
+		verifyBtn.addEventListener('click', function() {
+			const otp = getOtp();
+			if (otp.length === 6) {
+				verifyOtp(otp);
+			}
+		});
+
+		resendLink.addEventListener('click', function(e) {
+			e.preventDefault();
+			if (countdown > 0) return;
+
+			fetch('https://n8n.srv799171.hstgr.cloud/webhook/resend-otp', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: email })
+			});
+
+			startCountdown();
+		});
+
+		function getOtp() {
+			let otp = '';
+			digits.forEach(d => otp += d.value);
+			return otp;
+		}
+
+		function checkComplete() {
+			const otp = getOtp();
+			verifyBtn.disabled = otp.length !== 6;
+			if (otp.length === 6) {
+				verifyOtp(otp);
+			}
+		}
+
+		function verifyOtp(otp) {
+			verifyBtn.disabled = true;
+			verifyBtn.textContent = '{{ _("Verifying...") }}';
+
+			frappe.call({
+				method: 'lms.lms.api.verify_otp',
+				args: { email: email, otp: otp },
+				callback: function(r) {
+					if (r.message && r.message.success) {
+						document.getElementById('otp-form').style.display = 'none';
+						document.getElementById('success-state').style.display = 'block';
+						setTimeout(function() {
+							window.location.href = '/update-password?key=' + r.message.reset_key;
+						}, 1500);
+					} else {
+						showError(r.message.message || '{{ _("Invalid OTP") }}');
+					}
+				},
+				error: function() {
+					showError('{{ _("Verification failed. Please try again.") }}');
+				}
+			});
+		}
+
+		function showError(msg) {
+			errorEl.textContent = msg;
+			errorEl.style.display = 'block';
+			digits.forEach(d => {
+				d.classList.add('error');
+				d.value = '';
+			});
+			digits[0].focus();
+			verifyBtn.disabled = true;
+			verifyBtn.textContent = '{{ _("Verify Email") }}';
+		}
+
+		function startCountdown() {
+			countdown = 60;
+			resendLink.style.display = 'none';
+			resendCountdown.textContent = 'Resend in ' + countdown + 's';
+			resendCountdown.style.display = 'inline';
+
+			if (countdownInterval) clearInterval(countdownInterval);
+			countdownInterval = setInterval(function() {
+				countdown--;
+				resendCountdown.textContent = 'Resend in ' + countdown + 's';
+				if (countdown <= 0) {
+					clearInterval(countdownInterval);
+					resendLink.style.display = 'inline';
+					resendCountdown.style.display = 'none';
+				}
+			}, 1000);
+		}
+	});
+	</script>
+</body>
+</html>

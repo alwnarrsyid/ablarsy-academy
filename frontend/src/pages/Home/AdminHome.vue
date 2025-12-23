@@ -86,7 +86,7 @@
 			</router-link>
 		</div>
 
-		<div class="grid grid-cols-2 gap-5 mt-10">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10">
 			<div v-if="evals?.data?.length">
 				<div class="font-semibold text-lg text-ink-gray-9 mb-3">
 					{{ __('Upcoming Evaluations') }}

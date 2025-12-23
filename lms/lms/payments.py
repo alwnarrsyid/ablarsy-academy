@@ -64,6 +64,10 @@ def get_amount_with_gst(amount, gst_amount):
 def record_payment(address, doctype, docname, amount, original_amount, currency, amount_with_gst=0, discount_amount=0, payment_for_certificate=0, coupon_code=None, coupon=None):
     address = frappe._dict(address)
     address_name = save_address(address)
+
+    # Convert payment_for_certificate to int (Frappe Check field expects 0 or 1)
+    payment_for_certificate = 1 if payment_for_certificate else 0
+
     payment_doc = frappe.new_doc("LMS Payment")
     payment_doc.update({
         "member": frappe.session.user,
@@ -71,11 +75,11 @@ def record_payment(address, doctype, docname, amount, original_amount, currency,
         "address": address_name,
         "amount": amount,
         "currency": currency,
-        "discount_amount": discount_amount,
-        "amount_with_gst": amount_with_gst,
-        "gstin": address.gstin,
-        "pan": address.pan,
-        "source": address.source,
+        "discount_amount": discount_amount or 0,
+        "amount_with_gst": amount_with_gst or 0,
+        "gstin": address.get("gstin") or "",
+        "pan": address.get("pan") or "",
+        "source": address.get("source") or None,
         "payment_for_document_type": doctype,
         "payment_for_document": docname,
         "payment_for_certificate": payment_for_certificate,
@@ -84,7 +88,7 @@ def record_payment(address, doctype, docname, amount, original_amount, currency,
         payment_doc.update({
             "coupon": coupon,
             "coupon_code": coupon_code,
-            "discount_amount": discount_amount,
+            "discount_amount": discount_amount or 0,
             "original_amount": original_amount,
         })
     payment_doc.save(ignore_permissions=True)
@@ -96,7 +100,15 @@ def save_address(address):
         address_doc = frappe.get_last_doc("Address", filters=filters)
     else:
         address_doc = frappe.new_doc("Address")
-    address_doc.update(address)
+
+    # Make a copy of address dict to avoid modifying the original
+    address_data = dict(address)
+
+    # Map frontend 'address' field to Frappe's required 'address_line1'
+    if address_data.get("address") and not address_data.get("address_line1"):
+        address_data["address_line1"] = address_data.pop("address")
+
+    address_doc.update(address_data)
     address_doc.update({
         "address_title": frappe.db.get_value("User", frappe.session.user, "full_name"),
         "address_type": "Billing",
@@ -105,3 +117,4 @@ def save_address(address):
     })
     address_doc.save(ignore_permissions=True)
     return address_doc.name
+

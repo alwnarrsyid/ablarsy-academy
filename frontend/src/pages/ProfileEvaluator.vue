@@ -100,7 +100,7 @@
 				<h2 class="mb-4 text-lg font-semibold text-ink-gray-9">
 					{{ __('I am unavailable') }}
 				</h2>
-				<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
 					<FormControl
 						type="date"
 						:label="__('From')"

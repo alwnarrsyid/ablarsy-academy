@@ -60,41 +60,35 @@
 			</Button>
 		</router-link> -->
 	</header>
-	<div class="p-5 pb-10">
-		<div
-			class="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:items-center justify-between mb-5"
-		>
-			<div class="text-lg text-ink-gray-9 font-semibold">
+	<div class="p-4 md:p-5 pb-10">
+		<div class="mb-5">
+			<div class="text-lg text-ink-gray-9 font-semibold mb-4">
 				{{ __('All Batches') }}
 			</div>
-			<div
-				class="flex flex-col space-y-3 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4"
-			>
-				<TabButtons
-					v-if="user.data"
-					:buttons="batchTabs"
-					v-model="currentTab"
-					class="w-fit"
-				/>
-				<div class="grid grid-cols-2 gap-2">
-					<FormControl
-						v-model="title"
-						:placeholder="__('Search by Title')"
-						type="text"
-						class="min-w-40 lg:min-w-0 lg:w-32 xl:w-40"
-						@input="updateBatches()"
-					/>
-					<div class="min-w-40 lg:min-w-0 lg:w-32 xl:w-40">
-						<Select
-							v-if="categories.length"
-							v-model="currentCategory"
-							:options="categories"
-							:placeholder="__('Category')"
-							@change="updateBatches()"
-						/>
-					</div>
-				</div>
 
+			<!-- Tabs -->
+			<div class="mb-4" v-if="user.data">
+				<TabButtons :buttons="batchTabs" v-model="currentTab" class="w-fit" />
+			</div>
+
+			<!-- Filters -->
+			<div class="flex flex-col sm:flex-row gap-3">
+				<FormControl
+					v-model="title"
+					:placeholder="__('Search by Title')"
+					type="text"
+					class="w-full sm:w-48"
+					@input="updateBatches()"
+				/>
+				<div class="w-full sm:w-48">
+					<Select
+						v-if="categories.length"
+						v-model="currentCategory"
+						:options="categories"
+						:placeholder="__('Category')"
+						@change="updateBatches()"
+					/>
+				</div>
 				<FormControl
 					v-model="certification"
 					:label="__('Certification')"
@@ -251,17 +245,26 @@ const updateTabFilter = () => {
 	} else if (is_student.value) {
 		delete filters.value['enrolled']
 	} else {
-		delete filters.value['start_date']
-		delete filters.value['published']
-		orderBy.value = 'start_date desc'
-		if (currentTab.value == 'Upcoming') {
+		// Admin/Instructor/Evaluator logic
+		delete filters.value['enrolled']
+
+		if (currentTab.value == 'All') {
+			// Show all batches without filters
+			delete filters.value['start_date']
+			delete filters.value['published']
+			orderBy.value = 'start_date desc'
+		} else if (currentTab.value == 'Upcoming') {
 			filters.value['start_date'] = ['>=', dayjs().format('YYYY-MM-DD')]
 			filters.value['published'] = 1
 			orderBy.value = 'start_date'
 		} else if (currentTab.value == 'Archived') {
 			filters.value['start_date'] = ['<=', dayjs().format('YYYY-MM-DD')]
+			delete filters.value['published']
+			orderBy.value = 'start_date desc'
 		} else if (currentTab.value == 'Unpublished') {
 			filters.value['published'] = 0
+			delete filters.value['start_date']
+			orderBy.value = 'start_date desc'
 		}
 	}
 }

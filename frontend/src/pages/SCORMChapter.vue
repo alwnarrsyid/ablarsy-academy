@@ -14,7 +14,7 @@
 	>
 		<iframe
 			:src="chapter.doc.launch_file"
-			class="w-full h-[calc(100vh-3.00rem)]"
+			class="w-full h-[calc(100vh-8rem)] md:h-[calc(100vh-3.00rem)]"
 		/>
 	</div>
 	<div v-else-if="!enrollment.data?.length">

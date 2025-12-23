@@ -86,7 +86,7 @@
 						@click="enrollStudent()"
 						variant="solid"
 					>
-						{{ lesson.data.paid_course ? __('Buy Course') : __('Start Learning') }}
+						{{ (lesson.data.paid_course && !user.data?.is_admin && !user.data?.is_vip_student) ? __('Buy Course') : __('Start Learning') }}
 					</Button>
 					<Badge
 						theme="blue"
@@ -792,8 +792,8 @@ const enrollment = createResource({
 })
 
 const enrollStudent = () => {
-	// If course is paid, redirect to billing page for payment
-	if (lesson.data.paid_course) {
+	// If course is paid, redirect to billing page for payment (unless admin or VIP)
+	if (lesson.data.paid_course && !user.data?.is_admin && !user.data?.is_vip_student) {
 		router.push({
 			name: 'Billing',
 			params: { type: 'course', name: props.courseName },

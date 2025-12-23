@@ -187,6 +187,29 @@ lms/
 
 ## 📝 Changelog
 
+### v2.44.0 (2024-12-23)
+
+#### 📄 Legal & Policy Pages
+
+-   ✅ Added **Terms & Conditions** page (`/terms`) - Standalone HTML with tab-based navigation
+-   ✅ Added **Privacy Policy** page (`/privacy`) - Standalone HTML with tab-based navigation
+-   ✅ Added mandatory **consent checkbox** on signup form for Terms & Privacy
+-   ✅ Content covers: account registration, payment policies, referral program, refund policy, data collection, user rights
+-   ✅ Responsive layout using viewport units (vw) and clamp() for all screen sizes
+-   ✅ Interactive tabs to reduce scrolling
+-   ✅ Smart back button with referrer detection and new tab support
+
+**Files Added:**
+
+-   `lms/www/terms.html` - Syarat dan Ketentuan page
+-   `lms/www/privacy.html` - Kebijakan Privasi page
+
+**Files Modified:**
+
+-   `lms/templates/signup-form.html` - Added consent checkbox with links to policy pages
+
+---
+
 ### v2.43.0 (2024-12-18)
 
 -   ✅ Added custom landscape certificate PDF generator

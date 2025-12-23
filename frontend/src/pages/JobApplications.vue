@@ -15,12 +15,12 @@
 				]"
 			/>
 		</header>
-		<div class="max-w-4xl mx-auto pt-5 p-4">
-			<div class="mb-6">
-				<h1 class="text-xl font-semibold text-ink-gray-7 mb-4 md:mb-0">
+		<div class="p-4 md:p-5 pb-10">
+			<div class="mb-5">
+				<div class="text-lg text-ink-gray-9 font-semibold mb-4">
 					{{ applicationCount }}
 					{{ applicationCount === 1 ? __('Application') : __('Applications') }}
-				</h1>
+				</div>
 			</div>
 
 			<div v-if="applications.data?.length">

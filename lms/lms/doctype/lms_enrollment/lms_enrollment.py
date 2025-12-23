@@ -15,12 +15,15 @@ class LMSEnrollment(Document):
 
 	def validate_payment_for_paid_course(self):
 		"""Ensure payment is complete before enrolling in a paid course."""
+		# Skip validation if enrollment is from batch enrollment
+		if getattr(self.flags, 'from_batch_enrollment', False):
+			return
+
 		# Skip validation for moderators/admins
 		if frappe.session.user == "Administrator":
 			return
-		if "Moderator" in frappe.get_roles(frappe.session.user):
-			return
-		if "VIP Student" in frappe.get_roles(frappe.session.user):
+		user_roles = frappe.get_roles(frappe.session.user)
+		if "System Manager" in user_roles or "Moderator" in user_roles or "VIP Student" in user_roles:
 			return
 
 		course_details = frappe.db.get_value(
@@ -31,6 +34,7 @@ class LMSEnrollment(Document):
 		)
 
 		if course_details and course_details.paid_course:
+			# First check if user has paid for this course directly
 			payment = frappe.db.exists(
 				"LMS Payment",
 				{
@@ -41,12 +45,60 @@ class LMSEnrollment(Document):
 				},
 			)
 
-			if not payment:
-				frappe.throw(
-					_("You need to complete the payment for '{0}' before enrolling.").format(
-						course_details.title
-					)
+			if payment:
+				return  # User has paid for course directly
+
+			# Check if user is enrolled in a batch that contains this course
+			if self.is_enrolled_via_batch():
+				return  # User has access through batch enrollment
+
+			frappe.throw(
+				_("You need to complete the payment for '{0}' before enrolling.").format(
+					course_details.title
 				)
+			)
+
+	def is_enrolled_via_batch(self):
+		"""Check if user is enrolled in a batch that contains this course."""
+		member = self.member or frappe.session.user
+
+		# Get all batches that contain this course
+		batches_with_course = frappe.get_all(
+			"Batch Course",
+			filters={"course": self.course},
+			pluck="parent"
+		)
+
+		if not batches_with_course:
+			return False
+
+		# Check if user is enrolled in any of these batches with payment received
+		for batch in batches_with_course:
+			batch_enrollment = frappe.db.exists(
+				"LMS Batch Enrollment",
+				{"batch": batch, "member": member}
+			)
+			if batch_enrollment:
+				# Verify the batch was paid for (if it's a paid batch)
+				batch_info = frappe.db.get_value("LMS Batch", batch, ["paid_batch"], as_dict=True)
+				if not batch_info or not batch_info.paid_batch:
+					# Free batch, user has access
+					return True
+
+				# Paid batch, check if payment was received
+				batch_payment = frappe.db.exists(
+					"LMS Payment",
+					{
+						"payment_for_document_type": "LMS Batch",
+						"payment_for_document": batch,
+						"member": member,
+						"payment_received": 1,
+					}
+				)
+				if batch_payment:
+					return True
+
+		return False
 
 	def on_update(self):
 		update_program_progress(self.member)
@@ -134,6 +186,13 @@ def validate_course_enrollment_eligibility(course, member):
 	if not member:
 		member = frappe.session.user
 
+	# Skip validation for admins and VIP students
+	if member == "Administrator":
+		return
+	user_roles = frappe.get_roles(member)
+	if "System Manager" in user_roles or "Moderator" in user_roles or "VIP Student" in user_roles:
+		return
+
 	course_details = frappe.db.get_value(
 		"LMS Course",
 		course,
@@ -152,6 +211,7 @@ def validate_course_enrollment_eligibility(course, member):
 		frappe.throw(_("You cannot enroll in an unpublished course."))
 
 	if course_details.paid_course:
+		# Check if user has paid for this course directly
 		payment = frappe.db.exists(
 			"LMS Payment",
 			{
@@ -162,8 +222,55 @@ def validate_course_enrollment_eligibility(course, member):
 			},
 		)
 
-		if not payment:
-			frappe.throw(_("You need to complete the payment for this course before enrolling."))
+		if payment:
+			return  # User has paid for course directly
+
+		# Check if user is enrolled in a batch that contains this course
+		if is_enrolled_via_batch_standalone(course, member):
+			return  # User has access through batch enrollment
+
+		frappe.throw(_("You need to complete the payment for this course before enrolling."))
+
+
+def is_enrolled_via_batch_standalone(course, member):
+	"""Check if user is enrolled in a batch that contains this course (standalone function)."""
+	# Get all batches that contain this course
+	batches_with_course = frappe.get_all(
+		"Batch Course",
+		filters={"course": course},
+		pluck="parent"
+	)
+
+	if not batches_with_course:
+		return False
+
+	# Check if user is enrolled in any of these batches with payment received
+	for batch in batches_with_course:
+		batch_enrollment = frappe.db.exists(
+			"LMS Batch Enrollment",
+			{"batch": batch, "member": member}
+		)
+		if batch_enrollment:
+			# Verify the batch was paid for (if it's a paid batch)
+			batch_info = frappe.db.get_value("LMS Batch", batch, ["paid_batch"], as_dict=True)
+			if not batch_info or not batch_info.paid_batch:
+				# Free batch, user has access
+				return True
+
+			# Paid batch, check if payment was received
+			batch_payment = frappe.db.exists(
+				"LMS Payment",
+				{
+					"payment_for_document_type": "LMS Batch",
+					"payment_for_document": batch,
+					"member": member,
+					"payment_received": 1,
+				}
+			)
+			if batch_payment:
+				return True
+
+	return False
 
 
 @frappe.whitelist()

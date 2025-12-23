@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Syarat dan Ketentuan - Ablarsy Academy</title>
+	<link rel="icon" href="/assets/lms/images/favicon.ico" type="image/x-icon">
+	<style>
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+			background-color: #f8f9fa;
+			color: #333;
+			line-height: 1.6;
+		}
+
+		/* Header */
+		.header {
+			background: #fff;
+			border-bottom: 1px solid #e9ecef;
+			padding: 12px 5vw;
+			position: sticky;
+			top: 0;
+			z-index: 100;
+		}
+		.header-content {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+		}
+		.back-btn {
+			width: 32px;
+			height: 32px;
+			border: none;
+			background: transparent;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			color: #666;
+			padding: 0;
+			transition: color 0.15s;
+		}
+		.back-btn:hover {
+			color: #1a1a1a;
+		}
+		.back-btn svg {
+			width: 24px;
+			height: 24px;
+		}
+		.logo-section {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			text-decoration: none;
+			color: #333;
+		}
+		.logo-section img {
+			width: 28px;
+			height: 28px;
+		}
+		.logo-text {
+			font-weight: 600;
+			font-size: 14px;
+		}
+
+		/* Main Container */
+		.container {
+			padding: 24px 5vw;
+		}
+
+		/* Page Title */
+		.page-title {
+			text-align: center;
+			margin-bottom: 32px;
+		}
+		.page-title h1 {
+			font-size: clamp(20px, 4vw, 28px);
+			font-weight: 600;
+			margin-bottom: 8px;
+		}
+		.page-title p {
+			font-size: 14px;
+			color: #6c757d;
+		}
+
+		/* Tabs Container */
+		.tabs-wrapper {
+			background: #fff;
+			border: 1px solid #e9ecef;
+			border-radius: 12px;
+			overflow: hidden;
+		}
+
+		/* Tab Navigation */
+		.tab-nav {
+			display: flex;
+			border-bottom: 1px solid #e9ecef;
+			background: #fafafa;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+		}
+		.tab-nav::-webkit-scrollbar {
+			display: none;
+		}
+		.tab-btn {
+			flex: 1;
+			min-width: 100px;
+			padding: 14px 20px;
+			border: none;
+			background: transparent;
+			font-size: 13px;
+			font-weight: 500;
+			color: #6c757d;
+			cursor: pointer;
+			white-space: nowrap;
+			transition: all 0.2s;
+			position: relative;
+		}
+		.tab-btn:hover {
+			color: #333;
+			background: #fff;
+		}
+		.tab-btn.active {
+			color: #1a1a1a;
+			background: #fff;
+		}
+		.tab-btn.active::after {
+			content: '';
+			position: absolute;
+			bottom: -1px;
+			left: 0;
+			right: 0;
+			height: 2px;
+			background: #1a1a1a;
+		}
+
+		/* Tab Content */
+		.tab-content {
+			display: none;
+			padding: clamp(20px, 4vw, 40px);
+			animation: fadeIn 0.3s ease;
+		}
+		.tab-content.active {
+			display: block;
+		}
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateY(8px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		/* Section Styling */
+		.section {
+			margin-bottom: 28px;
+		}
+		.section:last-child {
+			margin-bottom: 0;
+		}
+		.section-title {
+			font-size: clamp(15px, 2vw, 18px);
+			font-weight: 600;
+			color: #1a1a1a;
+			margin-bottom: 12px;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		.section-num {
+			width: 26px;
+			height: 26px;
+			background: #f0f0f0;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 12px;
+			font-weight: 600;
+			color: #666;
+			flex-shrink: 0;
+		}
+		.section-body {
+			font-size: clamp(13px, 1.5vw, 15px);
+			color: #555;
+		}
+		.section-body p {
+			margin-bottom: 12px;
+		}
+		.section-body p:last-child {
+			margin-bottom: 0;
+		}
+		.section-body ul {
+			padding-left: 20px;
+			margin: 8px 0;
+		}
+		.section-body li {
+			margin-bottom: 8px;
+		}
+		.section-body strong {
+			color: #333;
+		}
+
+		/* Subsection */
+		.subsection {
+			margin-top: 16px;
+			padding: 16px 20px;
+			background: #fafafa;
+			border-radius: 8px;
+			border: 1px solid #f0f0f0;
+		}
+		.subsection-title {
+			font-size: 14px;
+			font-weight: 600;
+			color: #333;
+			margin-bottom: 10px;
+		}
+
+		/* Footer */
+		.footer {
+			text-align: center;
+			padding: 32px 5vw;
+		}
+		.footer-note {
+			font-size: 13px;
+			color: #6c757d;
+			margin-bottom: 16px;
+		}
+		.footer-links {
+			display: flex;
+			justify-content: center;
+			gap: 24px;
+		}
+		.footer-links a {
+			font-size: 13px;
+			color: #6c757d;
+			text-decoration: none;
+		}
+		.footer-links a:hover {
+			color: #333;
+		}
+
+		/* Contact Box */
+		.contact-box {
+			background: #fafafa;
+			border: 1px solid #f0f0f0;
+			border-radius: 8px;
+			padding: 20px;
+			margin-top: 16px;
+		}
+		.contact-item {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 10px;
+			font-size: 14px;
+		}
+		.contact-item:last-child {
+			margin-bottom: 0;
+		}
+		.contact-icon {
+			width: 18px;
+			height: 18px;
+			color: #666;
+		}
+
+		/* Responsive */
+		@media (max-width: 768px) {
+			.header {
+				padding: 12px 4vw;
+			}
+			.container {
+				padding: 20px 4vw;
+			}
+			.tab-btn {
+				padding: 12px 16px;
+				font-size: 12px;
+				min-width: 90px;
+			}
+			.section-body {
+				font-size: 13px;
+			}
+		}
+		@media (max-width: 480px) {
+			.header {
+				padding: 10px 16px;
+			}
+			.container {
+				padding: 16px;
+			}
+			.page-title {
+				margin-bottom: 20px;
+			}
+			.tab-btn {
+				min-width: 80px;
+				padding: 10px 12px;
+				font-size: 11px;
+			}
+			.tab-content {
+				padding: 16px;
+			}
+			.subsection {
+				padding: 14px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<!-- Header -->
+	<header class="header">
+		<div class="header-content">
+			<button type="button" class="back-btn" id="backBtn" title="Kembali" aria-label="Kembali ke halaman sebelumnya">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="15 18 9 12 15 6"></polyline>
+				</svg>
+			</button>
+			<a href="/lms" class="logo-section">
+				<img src="/assets/lms/images/logo.png" alt="Logo" onerror="this.style.display='none'">
+				<span class="logo-text">Ablarsy Academy</span>
+			</a>
+		</div>
+	</header>
+
+	<!-- Main Content -->
+	<div class="container">
+		<!-- Page Title -->
+		<div class="page-title">
+			<h1>Syarat dan Ketentuan</h1>
+			<p>Terakhir diperbarui: 23 Desember 2024</p>
+		</div>
+
+		<!-- Tabs -->
+		<div class="tabs-wrapper">
+			<!-- Tab Navigation -->
+			<div class="tab-nav">
+				<button class="tab-btn active" data-tab="umum">Umum</button>
+				<button class="tab-btn" data-tab="akun">Akun & Layanan</button>
+				<button class="tab-btn" data-tab="pembayaran">Pembayaran</button>
+				<button class="tab-btn" data-tab="referral">Referral</button>
+				<button class="tab-btn" data-tab="hukum">Hukum</button>
+			</div>
+
+			<!-- Tab: Umum -->
+			<div class="tab-content active" id="tab-umum">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">1</span>
+						Pendahuluan
+					</div>
+					<div class="section-body">
+						<p>Selamat datang di Ablarsy Academy ("Platform", "Kami"). Dengan mengakses atau menggunakan layanan kami, Anda ("Pengguna") menyetujui untuk terikat oleh Syarat dan Ketentuan ini.</p>
+						<p>Jika Anda tidak menyetujui syarat dan ketentuan ini, mohon untuk tidak menggunakan layanan kami.</p>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">2</span>
+						Definisi
+					</div>
+					<div class="section-body">
+						<ul>
+							<li><strong>Platform</strong> – Website Ablarsy Academy di lms.ablarsy.com</li>
+							<li><strong>Kursus</strong> – Materi pembelajaran online yang tersedia di Platform</li>
+							<li><strong>Batch</strong> – Program pembelajaran terstruktur dengan jadwal khusus</li>
+							<li><strong>Instruktur</strong> – Pengajar yang menyediakan konten di Platform</li>
+							<li><strong>Sertifikat</strong> – Dokumen digital setelah menyelesaikan program</li>
+							<li><strong>Referral</strong> – Program afiliasi untuk mereferensikan pengguna baru</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tab: Akun & Layanan -->
+			<div class="tab-content" id="tab-akun">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">3</span>
+						Pendaftaran Akun
+					</div>
+					<div class="section-body">
+						<p>Untuk mengakses layanan, Anda harus membuat akun dengan informasi yang akurat.</p>
+						<ul>
+							<li>Anda bertanggung jawab atas kerahasiaan kredensial akun</li>
+							<li>Semua aktivitas di bawah akun adalah tanggung jawab Anda</li>
+							<li>Usia minimal <strong>17 tahun</strong> atau dengan izin orang tua/wali</li>
+							<li>Satu akun hanya untuk satu individu (berbagi akun dilarang)</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">4</span>
+						Layanan dan Konten
+					</div>
+					<div class="section-body">
+						<div class="subsection">
+							<div class="subsection-title">Akses Kursus</div>
+							<ul>
+								<li>Kursus gratis: Akses tanpa batas waktu</li>
+								<li>Kursus berbayar: Akses seumur hidup setelah pembelian</li>
+								<li>Batch berbayar: Akses sesuai periode program</li>
+							</ul>
+						</div>
+						<div class="subsection">
+							<div class="subsection-title">Penggunaan yang Dilarang</div>
+							<ul>
+								<li>Menyalin, mendistribusikan, atau menjual kembali konten</li>
+								<li>Merekam atau mengunduh materi tanpa izin</li>
+								<li>Berbagi akses dengan pihak tidak terdaftar</li>
+								<li>Menggunakan Platform untuk tujuan ilegal</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">5</span>
+						Sertifikat
+					</div>
+					<div class="section-body">
+						<ul>
+							<li>Sertifikat diterbitkan setelah menyelesaikan seluruh materi</li>
+							<li>Lulus kuis/assessment dengan nilai minimum yang ditentukan</li>
+							<li>Dapat diverifikasi secara online melalui Platform</li>
+							<li>Bersifat non-transferable dan hanya berlaku untuk nama yang tertera</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tab: Pembayaran -->
+			<div class="tab-content" id="tab-pembayaran">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">6</span>
+						Pembayaran dan Harga
+					</div>
+					<div class="section-body">
+						<ul>
+							<li>Pembayaran diproses melalui <strong>Midtrans</strong> (Transfer Bank, E-Wallet, Kartu Kredit)</li>
+							<li>Semua harga dalam <strong>Rupiah (IDR)</strong></li>
+							<li>Akses diberikan segera setelah pembayaran berhasil</li>
+							<li>Kupon hanya dapat digunakan sekali dan tidak dapat digabungkan</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">7</span>
+						Kebijakan Pengembalian Dana
+					</div>
+					<div class="section-body">
+						<div class="subsection">
+							<div class="subsection-title">Kursus Berbayar</div>
+							<ul>
+								<li>Dapat diajukan dalam <strong>7 hari</strong> setelah pembelian</li>
+								<li>Syarat: Progress tidak lebih dari 20%</li>
+								<li>Pengembalian <strong>50%</strong> tanpa biaya administrasi</li>
+							</ul>
+						</div>
+						<div class="subsection">
+							<div class="subsection-title">Batch Berbayar</div>
+							<ul>
+								<li>Dapat diajukan <strong>3 hari</strong> sebelum batch dimulai</li>
+								<li>Setelah batch dimulai, tidak ada pengembalian</li>
+							</ul>
+						</div>
+						<div class="subsection">
+							<div class="subsection-title">Pengecualian</div>
+							<p>Tidak ada pengembalian untuk pembelian dengan kupon/diskon atau akun yang melanggar ketentuan.</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tab: Referral -->
+			<div class="tab-content" id="tab-referral">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">8</span>
+						Program Referral
+					</div>
+					<div class="section-body">
+						<p><strong>Kelayakan:</strong> Semua pengguna terdaftar dapat berpartisipasi dalam program referral.</p>
+
+						<div class="subsection">
+							<div class="subsection-title">Komisi</div>
+							<ul>
+								<li>Diberikan ketika pengguna yang direferensikan melakukan pembelian pertama</li>
+								<li>Besaran sesuai ketentuan yang berlaku saat itu</li>
+							</ul>
+						</div>
+
+						<div class="subsection">
+							<div class="subsection-title">Pembayaran Komisi</div>
+							<ul>
+								<li>Pencairan setiap bulan pada <strong>tanggal 25</strong></li>
+								<li>Bersifat <strong>pengajuan</strong> – harus diajukan melalui menu Referral</li>
+								<li>Pengajuan sebelum tanggal 20 diproses bulan yang sama</li>
+								<li>Pengajuan setelah tanggal 20 diproses bulan berikutnya</li>
+								<li>Dapat dibatalkan jika terjadi refund atau fraud</li>
+							</ul>
+						</div>
+
+						<div class="subsection">
+							<div class="subsection-title">Larangan</div>
+							<ul>
+								<li>Self-referral (mereferensikan diri sendiri)</li>
+								<li>Spam atau penyalahgunaan sistem</li>
+								<li>Iklan berbayar yang menyesatkan</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tab: Hukum -->
+			<div class="tab-content" id="tab-hukum">
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">9</span>
+						Hak Kekayaan Intelektual
+					</div>
+					<div class="section-body">
+						<p>Seluruh konten Platform (materi kursus, logo, kustomisasi) adalah milik Ablarsy Academy dan dilindungi hukum hak cipta.</p>
+						<p>Platform ini dibangun menggunakan <strong>Frappe LMS</strong>, perangkat lunak open-source yang telah dikustomisasi sepenuhnya oleh kami.</p>
+						<p>Penggunaan konten untuk tujuan selain pembelajaran pribadi memerlukan izin tertulis.</p>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">10</span>
+						Batasan Tanggung Jawab
+					</div>
+					<div class="section-body">
+						<p>Platform disediakan "sebagaimana adanya" tanpa jaminan apapun.</p>
+						<ul>
+							<li>Kami tidak bertanggung jawab atas gangguan teknis sementara</li>
+							<li>Kerugian dari konten pihak ketiga</li>
+							<li>Hasil pembelajaran atau karir Pengguna</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">11</span>
+						Hukum yang Berlaku
+					</div>
+					<div class="section-body">
+						<p>Syarat dan Ketentuan ini diatur oleh hukum <strong>Republik Indonesia</strong>.</p>
+						<p>Sengketa diselesaikan melalui musyawarah, mediasi, atau Pengadilan Negeri Jakarta Selatan.</p>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="section-title">
+						<span class="section-num">12</span>
+						Kontak
+					</div>
+					<div class="section-body">
+						<p>Jika Anda memiliki pertanyaan, hubungi kami:</p>
+						<div class="contact-box">
+							<div class="contact-item">
+								<svg class="contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+									<polyline points="22,6 12,13 2,6"></polyline>
+								</svg>
+								<span>support@ablarsy.com</span>
+							</div>
+							<div class="contact-item">
+								<svg class="contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<circle cx="12" cy="12" r="10"></circle>
+									<line x1="2" y1="12" x2="22" y2="12"></line>
+									<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+								</svg>
+								<span>lms.ablarsy.com</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Footer -->
+	<footer class="footer">
+		<p class="footer-note">Dengan menggunakan Platform Ablarsy Academy, Anda menyatakan telah membaca dan menyetujui seluruh Syarat dan Ketentuan ini.</p>
+		<div class="footer-links">
+			<a href="/privacy">Kebijakan Privasi</a>
+			<a href="/">Kembali ke Beranda</a>
+		</div>
+	</footer>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			// Back button - handle pages opened in new tab
+			var backBtn = document.getElementById('backBtn');
+			if (backBtn) {
+				backBtn.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+
+					var referrer = document.referrer;
+					var currentHost = window.location.host;
+
+					// If referrer exists and is from same site, go there
+					if (referrer && referrer.indexOf(currentHost) !== -1 && referrer !== window.location.href) {
+						window.location.href = referrer;
+						return;
+					}
+
+					// If page was opened in new tab (history length is 1 or 2), try to close tab
+					if (window.history.length <= 2) {
+						// Try to close the tab (works if opened via window.open or _blank)
+						window.close();
+						// If window.close() didn't work (blocked by browser), redirect to home after small delay
+						setTimeout(function() {
+							window.location.href = '/lms';
+						}, 100);
+						return;
+					}
+
+					// Otherwise, go back in history
+					window.history.back();
+				});
+			}
+
+			// Tabs
+			const tabs = document.querySelectorAll('.tab-btn');
+			const contents = document.querySelectorAll('.tab-content');
+
+			tabs.forEach(tab => {
+				tab.addEventListener('click', function() {
+					const target = this.dataset.tab;
+
+					tabs.forEach(t => t.classList.remove('active'));
+					contents.forEach(c => c.classList.remove('active'));
+
+					this.classList.add('active');
+					document.getElementById('tab-' + target).classList.add('active');
+				});
+			});
+		});
+	</script>
+</body>
+</html>

@@ -1,43 +1,42 @@
 <template>
 	<div>
 		<div v-if="isAdmin || isStudent" class="">
-		<header
-			class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-3 py-2.5 sm:px-5"
-		>
-			<Breadcrumbs class="h-7" :items="breadcrumbs" />
-			<div class="flex items-center space-x-2">
-				<Button
-					v-if="isAdmin && batch.data?.certification"
-					@click="openCertificateDialog = true"
-				>
-					{{ __('Generate Certificates') }}
-				</Button>
-				<Button v-if="canMakeAnnouncement()" @click="openAnnouncementModal()">
-					<span>
-						{{ __('Make an Announcement') }}
-					</span>
-					<template #suffix>
-						<SendIcon class="h-4 stroke-1.5" />
-					</template>
-				</Button>
-			</div>
-		</header>
-		<div
-			v-if="batch.data"
-			class="grid grid-cols-1 md:grid-cols-[75%,25%] h-[calc(100vh-3.2rem)]"
-		>
-			<div class="border-r">
-				<Tabs
-					v-model="tabIndex"
-					as="div"
-					:tabs="tabs"
-					tablistClass="overflow-y-hidden bg-surface-white"
-				>
-					<template #tab="{ tab, selected }">
-						<div>
+			<header
+				class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-3 py-2.5 sm:px-5"
+			>
+				<Breadcrumbs class="h-7" :items="breadcrumbs" />
+				<div class="flex items-center space-x-2">
+					<Button
+						v-if="isAdmin && batch.data?.certification"
+						@click="openCertificateDialog = true"
+					>
+						{{ __('Generate Certificates') }}
+					</Button>
+					<Button v-if="canMakeAnnouncement()" @click="openAnnouncementModal()">
+						<span>
+							{{ __('Make an Announcement') }}
+						</span>
+						<template #suffix>
+							<SendIcon class="h-4 stroke-1.5" />
+						</template>
+					</Button>
+				</div>
+			</header>
+			<div
+				v-if="batch.data"
+				class="grid grid-cols-1 md:grid-cols-[75%,25%] h-auto md:h-[calc(100vh-3.2rem)]"
+			>
+				<div class="border-r">
+					<Tabs
+						v-model="tabIndex"
+						as="div"
+						:tabs="tabs"
+						tablistClass="overflow-x-auto overflow-y-hidden bg-surface-white flex flex-nowrap px-5 gap-4"
+					>
+						<template #tab="{ tab, selected }">
 							<button
-								class="group -mb-px flex items-center gap-1 border-b border-transparent py-2.5 text-base text-ink-gray-5 duration-300 ease-in-out hover:border-outline-gray-3 hover:text-ink-gray-9"
-								:class="{ 'text-ink-gray-9': selected }"
+								class="group -mb-px flex items-center gap-1 border-b-2 border-transparent py-2.5 text-base text-ink-gray-5 duration-300 ease-in-out hover:border-outline-gray-3 hover:text-ink-gray-9 whitespace-nowrap flex-shrink-0"
+								:class="{ 'text-ink-gray-9 border-ink-gray-9': selected }"
 							>
 								<component
 									v-if="tab.icon"
@@ -57,153 +56,152 @@
 									{{ tab.count }}
 								</Badge>
 							</button>
+						</template>
+						<template #tab-panel="{ tab }">
+							<div class="pt-5 px-5 pb-10">
+								<div v-if="tab.label == 'Courses'">
+									<BatchCourses :batch="batch.data.name" />
+								</div>
+								<div v-else-if="tab.label == 'Dashboard' && isStudent">
+									<BatchDashboard :batch="batch" :isStudent="isStudent" />
+								</div>
+								<div v-else-if="tab.label == 'Dashboard'">
+									<AdminBatchDashboard :batch="batch" />
+								</div>
+								<div v-else-if="tab.label == 'Students'">
+									<BatchStudents :batch="batch" />
+								</div>
+								<div v-else-if="tab.label == 'Classes'">
+									<LiveClass
+										:batch="batch.data.name"
+										:zoomAccount="batch.data.zoom_account"
+										:googleMeetAccount="batch.data.google_meet_account"
+									/>
+								</div>
+								<div v-else-if="tab.label == 'Assessments'">
+									<Assessments :batch="batch.data.name" />
+								</div>
+								<div v-else-if="tab.label == 'Announcements'">
+									<Announcements :batch="batch.data.name" />
+								</div>
+								<div v-else-if="tab.label == 'Discussions'">
+									<Discussions
+										doctype="LMS Batch"
+										:docname="batch.data.name"
+										:title="__('Discussions')"
+										:key="batch.data.name"
+										:singleThread="true"
+										:scrollToBottom="false"
+									/>
+								</div>
+							</div>
+						</template>
+					</Tabs>
+				</div>
+				<div class="p-5 border-t md:border-t-0">
+					<div class="mb-10">
+						<div class="text-ink-gray-7 font-semibold mb-2">
+							{{ __('About this batch') }}
 						</div>
-					</template>
-					<template #tab-panel="{ tab }">
-						<div class="pt-5 px-5 pb-10">
-							<div v-if="tab.label == 'Courses'">
-								<BatchCourses :batch="batch.data.name" />
-							</div>
-							<div v-else-if="tab.label == 'Dashboard' && isStudent">
-								<BatchDashboard :batch="batch" :isStudent="isStudent" />
-							</div>
-							<div v-else-if="tab.label == 'Dashboard'">
-								<AdminBatchDashboard :batch="batch" />
-							</div>
-							<div v-else-if="tab.label == 'Students'">
-								<BatchStudents :batch="batch" />
-							</div>
-							<div v-else-if="tab.label == 'Classes'">
-								<LiveClass
-									:batch="batch.data.name"
-									:zoomAccount="batch.data.zoom_account"
-									:googleMeetAccount="batch.data.google_meet_account"
-								/>
-							</div>
-							<div v-else-if="tab.label == 'Assessments'">
-								<Assessments :batch="batch.data.name" />
-							</div>
-							<div v-else-if="tab.label == 'Announcements'">
-								<Announcements :batch="batch.data.name" />
-							</div>
-							<div v-else-if="tab.label == 'Discussions'">
-								<Discussions
-									doctype="LMS Batch"
-									:docname="batch.data.name"
-									:title="__('Discussions')"
-									:key="batch.data.name"
-									:singleThread="true"
-									:scrollToBottom="false"
-								/>
-							</div>
-						</div>
-					</template>
-				</Tabs>
-			</div>
-			<div class="p-5 border-t md:border-t-0">
-				<div class="mb-10">
-					<div class="text-ink-gray-7 font-semibold mb-2">
-						{{ __('About this batch') }}
-					</div>
-					<div
-						v-html="batch.data.description"
-						class="leading-5 mb-4 text-ink-gray-7"
-					></div>
-
-					<div class="flex items-center avatar-group overlap mb-5">
 						<div
-							class="h-6 mr-1"
-							:class="{
-								'avatar-group overlap': batch.data.instructors.length > 1,
-							}"
-						>
-							<UserAvatar
-								v-for="instructor in batch.data.instructors"
-								:key="instructor.instructor || instructor"
-								:user="instructor"
-							/>
+							v-html="batch.data.description"
+							class="leading-5 mb-4 text-ink-gray-7"
+						></div>
+
+						<div class="flex items-center avatar-group overlap mb-5">
+							<div
+								class="h-6 mr-1"
+								:class="{
+									'avatar-group overlap': batch.data.instructors.length > 1,
+								}"
+							>
+								<UserAvatar
+									v-for="instructor in batch.data.instructors"
+									:key="instructor.instructor || instructor"
+									:user="instructor"
+								/>
+							</div>
+							<CourseInstructors :instructors="batch.data.instructors" />
 						</div>
-						<CourseInstructors :instructors="batch.data.instructors" />
+						<DateRange
+							:startDate="batch.data.start_date"
+							:endDate="batch.data.end_date"
+							class="mb-3"
+						/>
+						<div class="flex items-center mb-3 text-ink-gray-7">
+							<Clock class="h-4 w-4 stroke-1.5 mr-2" />
+							<span>
+								{{ formatTime(batch.data.start_time) }} -
+								{{ formatTime(batch.data.end_time) }}
+							</span>
+						</div>
+						<div
+							v-if="batch.data.timezone"
+							class="flex items-center mb-3 text-ink-gray-7"
+						>
+							<Globe class="h-4 w-4 stroke-1.5 mr-2" />
+							<span>
+								{{ batch.data.timezone }}
+							</span>
+						</div>
 					</div>
-					<DateRange
-						:startDate="batch.data.start_date"
-						:endDate="batch.data.end_date"
-						class="mb-3"
-					/>
-					<div class="flex items-center mb-3 text-ink-gray-7">
-						<Clock class="h-4 w-4 stroke-1.5 mr-2" />
-						<span>
-							{{ formatTime(batch.data.start_time) }} -
-							{{ formatTime(batch.data.end_time) }}
-						</span>
+					<div v-if="dayjs().isSameOrAfter(dayjs(batch.data.start_date))">
+						<div class="text-ink-gray-7 font-semibold mb-2">
+							{{ __('Feedback') }}
+						</div>
+						<BatchFeedback :batch="batch.data?.name" />
 					</div>
-					<div
-						v-if="batch.data.timezone"
-						class="flex items-center mb-3 text-ink-gray-7"
+				</div>
+				<AnnouncementModal
+					v-model="showAnnouncementModal"
+					:batch="batch.data.name"
+					:students="batch.data.students"
+				/>
+			</div>
+		</div>
+		<div v-else-if="!user.data?.name" class="">
+			<div class="text-base border rounded-md w-full sm:w-2/3 md:w-1/2 lg:w-1/3 mx-auto my-32 mx-4 sm:mx-auto">
+				<div class="border-b px-5 py-3 font-medium">
+					<span
+						class="inline-flex items-center before:bg-surface-red-5 before:w-2 before:h-2 before:rounded-md before:mr-2"
+					></span>
+					{{ __('Not Permitted') }}
+				</div>
+				<div class="px-5 py-3">
+					<div v-if="user.data" class="mb-4 leading-6">
+						{{
+							__(
+								'You are not a member of this batch. Please checkout our upcoming batches.'
+							)
+						}}
+					</div>
+					<div v-else class="mb-4 leading-6">
+						{{ __('Please login to access this page.') }}
+					</div>
+					<router-link
+						v-if="user.data"
+						:to="{
+							name: 'Batches',
+							params: {
+								batchName: batch.data?.name,
+							},
+						}"
 					>
-						<Globe class="h-4 w-4 stroke-1.5 mr-2" />
-						<span>
-							{{ batch.data.timezone }}
-						</span>
-					</div>
-				</div>
-				<div v-if="dayjs().isSameOrAfter(dayjs(batch.data.start_date))">
-					<div class="text-ink-gray-7 font-semibold mb-2">
-						{{ __('Feedback') }}
-					</div>
-					<BatchFeedback :batch="batch.data?.name" />
-				</div>
-			</div>
-			<AnnouncementModal
-				v-model="showAnnouncementModal"
-				:batch="batch.data.name"
-				:students="batch.data.students"
-			/>
-		</div>
-	</div>
-	<div v-else-if="!user.data?.name" class="">
-		<div class="text-base border rounded-md w-1/3 mx-auto my-32">
-			<div class="border-b px-5 py-3 font-medium">
-				<span
-					class="inline-flex items-center before:bg-surface-red-5 before:w-2 before:h-2 before:rounded-md before:mr-2"
-				></span>
-				{{ __('Not Permitted') }}
-			</div>
-			<div class="px-5 py-3">
-				<div v-if="user.data" class="mb-4 leading-6">
-					{{
-						__(
-							'You are not a member of this batch. Please checkout our upcoming batches.'
-						)
-					}}
-				</div>
-				<div v-else class="mb-4 leading-6">
-					{{ __('Please login to access this page.') }}
-				</div>
-				<router-link
-					v-if="user.data"
-					:to="{
-						name: 'Batches',
-						params: {
-							batchName: batch.data?.name,
-						},
-					}"
-				>
-					<Button variant="solid" class="w-full">
-						{{ __('Upcoming Batches') }}
+						<Button variant="solid" class="w-full">
+							{{ __('Upcoming Batches') }}
+						</Button>
+					</router-link>
+					<Button
+						v-else
+						variant="solid"
+						class="w-full"
+						@click="redirectToLogin()"
+					>
+						{{ __('Login') }}
 					</Button>
-				</router-link>
-				<Button
-					v-else
-					variant="solid"
-					class="w-full"
-					@click="redirectToLogin()"
-				>
-					{{ __('Login') }}
-				</Button>
+				</div>
 			</div>
 		</div>
-	</div>
 		<BulkCertificates
 			v-if="batch.data"
 			v-model="openCertificateDialog"
@@ -393,3 +391,30 @@ usePageMeta(() => {
 	}
 })
 </script>
+<style scoped>
+/* Force tabs to be horizontally scrollable on mobile - horizontal only */
+:deep([role="tablist"]),
+:deep(.overflow-x-auto) {
+	display: flex !important;
+	flex-wrap: nowrap !important;
+	overflow-x: auto !important;
+	overflow-y: hidden !important;
+	-webkit-overflow-scrolling: touch;
+	scroll-behavior: smooth;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	max-width: 100%;
+	touch-action: pan-x;
+	overscroll-behavior-x: contain;
+}
+
+:deep([role="tablist"])::-webkit-scrollbar,
+:deep(.overflow-x-auto)::-webkit-scrollbar {
+	display: none;
+}
+
+:deep([role="tablist"] > *),
+:deep(.overflow-x-auto > *) {
+	flex-shrink: 0 !important;
+}
+</style>

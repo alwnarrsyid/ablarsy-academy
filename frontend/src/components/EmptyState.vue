@@ -1,11 +1,11 @@
 <template>
-	<div class="flex flex-col items-center justify-center mt-60">
+	<div class="flex flex-col items-center justify-center mt-20 md:mt-60 px-5">
 		<GraduationCap class="size-10 mx-auto stroke-1 text-ink-gray-5" />
-		<div class="text-lg font-semibold text-ink-gray-7 mb-2.5">
+		<div class="text-lg font-semibold text-ink-gray-7 mb-2.5 mt-4">
 			{{ __('No {0}').format(type?.toLowerCase()) }}
 		</div>
 		<div
-			class="leading-5 text-base w-full md:w-2/5 text-base text-center text-ink-gray-7"
+			class="leading-5 text-base text-center text-ink-gray-5 max-w-md"
 		>
 			{{
 				__(

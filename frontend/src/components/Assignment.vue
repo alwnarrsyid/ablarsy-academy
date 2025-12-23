@@ -5,7 +5,7 @@
 		:class="{ 'border rounded-lg overflow-auto': !showTitle }"
 	>
 		<div
-			class="border-r p-5 overflow-y-auto h-[calc(100vh-3.2rem)]"
+			class="border-r p-5 overflow-y-auto h-auto md:h-[calc(100vh-3.2rem)]"
 			:class="{ 'h-full': !showTitle }"
 		>
 			<div v-if="showTitle" class="text-lg font-semibold mb-5 text-ink-gray-9">

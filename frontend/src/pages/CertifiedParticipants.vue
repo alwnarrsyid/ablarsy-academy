@@ -12,23 +12,20 @@
 			</Button>
 		</router-link>
 	</header>
-	<div class="mx-auto w-full max-w-4xl pt-6 pb-10">
-		<div class="flex flex-col md:flex-row justify-between mb-4 px-3">
-			<div class="text-xl font-semibold text-ink-gray-7 mb-4 md:mb-0">
+	<div class="p-4 md:p-5 pb-10">
+		<div class="mb-5">
+			<div class="text-lg text-ink-gray-9 font-semibold mb-4">
 				{{ memberCount }} {{ __('certified members') }}
 			</div>
-			<div class="grid grid-cols-2 gap-2">
+			<div class="flex flex-col sm:flex-row gap-3">
 				<FormControl
 					v-model="nameFilter"
 					:placeholder="__('Search by Name')"
 					type="text"
-					class="min-w-40 lg:min-w-0 lg:w-32 xl:w-40"
+					class="w-full sm:w-48"
 					@input="updateParticipants()"
 				/>
-				<div
-					v-if="categories.data?.length"
-					class="min-w-40 lg:min-w-0 lg:w-32 xl:w-40"
-				>
+				<div v-if="categories.data?.length" class="w-full sm:w-48">
 					<Select
 						v-model="currentCategory"
 						:options="categories.data"

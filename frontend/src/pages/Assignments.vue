@@ -20,24 +20,23 @@
 		</Button>
 	</header>
 
-	<div class="md:w-3/4 md:mx-auto py-5 mx-5">
-		<div class="flex items-center justify-between mb-5">
-			<div v-if="assignmentCount" class="text-lg font-semibold text-ink-gray-9">
+	<div class="p-4 md:p-5 pb-10">
+		<div class="mb-5">
+			<div v-if="assignmentCount" class="text-lg text-ink-gray-9 font-semibold mb-4">
 				{{ __('{0} Assignments').format(assignmentCount) }}
 			</div>
-			<div
-				v-if="assignments.data?.length || assignmentCount > 0"
-				class="grid grid-cols-2 gap-5"
-			>
+			<div v-if="assignments.data?.length || assignmentCount > 0" class="flex flex-col sm:flex-row gap-3">
 				<FormControl
 					v-model="titleFilter"
 					:placeholder="__('Search by title')"
+					class="w-full sm:w-48"
 				/>
 				<FormControl
 					v-model="typeFilter"
 					type="select"
 					:options="assignmentTypes"
 					:placeholder="__('Type')"
+					class="w-full sm:w-36"
 				/>
 			</div>
 		</div>

@@ -13,15 +13,29 @@ class LMSBatchEnrollment(Document):
 	def after_insert(self):
 		send_confirmation_email(self)
 		self.add_member_to_live_class()
+		# Enroll member in all courses of this batch AFTER batch enrollment is saved
+		self.enroll_in_batch_courses()
 
 	def validate(self):
 		self.validate_owner()
 		self.validate_duplicate_members()
 		self.validate_seat_availability()
-		self.validate_course_enrollment()
+		# NOTE: Course enrollment moved to after_insert() to avoid chicken-egg problem
 
 	def validate_owner(self):
+		# Skip if owner is the member (self-enrollment via payment)
 		if self.owner == self.member:
+			return
+
+		# Skip validation if this enrollment is from a successful payment
+		# (webhook processes run as Administrator or system user)
+		if self.payment:
+			payment_status = frappe.db.get_value("LMS Payment", self.payment, "payment_received")
+			if payment_status:
+				return  # Payment verified, allow enrollment
+
+		# Check if owner is Administrator (system processes like webhooks)
+		if self.owner == "Administrator":
 			return
 
 		roles = frappe.get_roles(self.owner)
@@ -41,7 +55,8 @@ class LMSBatchEnrollment(Document):
 		if seat_count and enrolled_count >= seat_count:
 			frappe.throw(_("There are no seats available in this batch."))
 
-	def validate_course_enrollment(self):
+	def enroll_in_batch_courses(self):
+		"""Enroll member in all courses of this batch after batch enrollment is saved."""
 		courses = frappe.get_all("Batch Course", filters={"parent": self.batch}, fields=["course"])
 
 		for course in courses:
@@ -49,10 +64,17 @@ class LMSBatchEnrollment(Document):
 				"LMS Enrollment",
 				{"course": course.course, "member": self.member},
 			):
-				enrollment = frappe.new_doc("LMS Enrollment")
-				enrollment.course = course.course
-				enrollment.member = self.member
-				enrollment.save()
+				try:
+					enrollment = frappe.new_doc("LMS Enrollment")
+					enrollment.course = course.course
+					enrollment.member = self.member
+					enrollment.flags.from_batch_enrollment = True  # Flag to skip payment validation
+					enrollment.save(ignore_permissions=True)
+				except Exception as e:
+					frappe.log_error(
+						f"Failed to enroll {self.member} in course {course.course}: {str(e)}",
+						"Batch Course Enrollment Error"
+					)
 
 	def add_member_to_live_class(self):
 		live_classes = frappe.get_all("LMS Live Class", {"batch_name": self.batch}, ["name", "event"])

@@ -49,7 +49,7 @@
 			<div class="text-lg text-ink-gray-9 font-semibold mb-4">
 				{{ __('Details') }}
 			</div>
-			<div class="grid grid-cols-2 gap-5">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 				<div class="space-y-5">
 					<FormControl
 						v-model="quizDetails.doc.title"

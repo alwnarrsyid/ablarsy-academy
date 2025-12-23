@@ -5,7 +5,7 @@
 	>
 		<Breadcrumbs :items="breadcrumbs" />
 	</header>
-	<div class="overflow-hidden h-[calc(100vh-3.2rem)]">
+	<div class="overflow-hidden h-auto md:h-[calc(100vh-3.2rem)]">
 		<Assignment
 			:assignmentID="assignmentID"
 			:submissionName="submissionName"

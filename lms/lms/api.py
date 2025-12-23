@@ -154,6 +154,7 @@ def get_user_info():
 	user.is_fc_site = is_fc_site()
 	user.is_system_manager = "System Manager" in user.roles
 	user.is_admin = user.name == "Administrator" or "System Manager" in user.roles
+	user.is_vip_student = "VIP Student" in user.roles
 	user.sitename = frappe.local.site
 	user.developer_mode = frappe.conf.developer_mode
 	if user.is_fc_site and user.is_system_manager:
@@ -232,6 +233,8 @@ def validate_billing_access(billing_type, name):
 			"address_title as billing_name",
 			"address_line1",
 			"address_line2",
+			"village",
+			"district",
 			"city",
 			"state",
 			"country",
@@ -1735,3 +1738,1846 @@ def get_profile_details(username):
 
 	details.roles = frappe.get_roles(details.name)
 	return details
+
+
+# ============================================
+# REFERRAL SYSTEM APIs
+# ============================================
+
+@frappe.whitelist()
+def get_referral_stats(user=None):
+	"""
+	Get aggregated referral statistics for a user.
+	Returns: total_referrals, total_earnings, pending_payout, paid_payout
+	"""
+	if not user:
+		user = frappe.session.user
+
+	# Count referred users
+	total_referrals = frappe.db.count("User", {"referred_by": user})
+
+	# Get commission stats
+	commissions = frappe.get_all(
+		"LMS Referral Commission",
+		filters={"referrer": user},
+		fields=["commission_amount", "payout_status"]
+	)
+
+	total_earnings = sum(c.commission_amount or 0 for c in commissions)
+	pending_payout = sum(c.commission_amount or 0 for c in commissions if c.payout_status == "Unpaid")
+	paid_payout = sum(c.commission_amount or 0 for c in commissions if c.payout_status == "Paid")
+
+	# Get user's referral code
+	referral_code = frappe.db.get_value("User", user, "referral_code") or ""
+
+	return {
+		"referral_code": referral_code,
+		"total_referrals": total_referrals,
+		"total_earnings": total_earnings,
+		"pending_payout": pending_payout,
+		"paid_payout": paid_payout,
+	}
+
+
+@frappe.whitelist()
+def get_referral_commissions(user=None, status=None, start=0, limit=20):
+	"""
+	Get list of referral commission records for a user.
+	For n8n integration and profile dashboard.
+	"""
+	if not user:
+		user = frappe.session.user
+
+	filters = {"referrer": user}
+	if status:
+		filters["payout_status"] = status
+
+	commissions = frappe.get_all(
+		"LMS Referral Commission",
+		filters=filters,
+		fields=[
+			"name", "referred_student", "payment", "purchase_type",
+			"purchase_document", "total_amount", "commission_amount",
+			"payout_status", "payout_date", "creation"
+		],
+		order_by="creation desc",
+		start=cint(start),
+		limit_page_length=cint(limit)
+	)
+
+	# Enrich with student name
+	for c in commissions:
+		c.student_name = frappe.db.get_value("User", c.referred_student, "full_name")
+		if c.purchase_document:
+			c.purchase_title = frappe.db.get_value(c.purchase_type, c.purchase_document, "title")
+
+	return commissions
+
+
+@frappe.whitelist()
+def create_referral_commission(data):
+	"""Create a new referral commission record. Admin only."""
+	frappe.only_for("System Manager")
+
+	if isinstance(data, str):
+		data = json.loads(data)
+
+	doc = frappe.get_doc({
+		"doctype": "LMS Referral Commission",
+		**data
+	})
+	doc.insert(ignore_permissions=True)
+	return doc.name
+
+
+@frappe.whitelist()
+def update_referral_commission(name, data):
+	"""Update a referral commission record. Admin only."""
+	frappe.only_for("System Manager")
+
+	if isinstance(data, str):
+		data = json.loads(data)
+
+	doc = frappe.get_doc("LMS Referral Commission", name)
+	doc.update(data)
+	doc.save(ignore_permissions=True)
+	return doc.name
+
+
+@frappe.whitelist()
+def delete_referral_commission(name):
+	"""Delete a referral commission record. Admin only."""
+	frappe.only_for("System Manager")
+
+	frappe.delete_doc("LMS Referral Commission", name)
+	return True
+
+
+@frappe.whitelist()
+def get_all_users_data(filters=None, start=0, limit=50):
+	"""
+	Get all users with referral information for n8n sync.
+	Requires System Manager role.
+	"""
+	frappe.only_for("System Manager")
+
+	user_filters = {"enabled": 1, "name": ["not in", ["Administrator", "Guest"]]}
+	if filters:
+		user_filters.update(filters if isinstance(filters, dict) else json.loads(filters))
+
+	users = frappe.get_all(
+		"User",
+		filters=user_filters,
+		fields=[
+			"name", "email", "full_name", "username", "user_image",
+			"referral_code", "referred_by", "creation", "last_active"
+		],
+		order_by="creation desc",
+		start=cint(start),
+		limit_page_length=cint(limit)
+	)
+
+	# Enrich with referral stats
+	for user in users:
+		user.referral_count = frappe.db.count("User", {"referred_by": user.name})
+		if user.referred_by:
+			user.referred_by_name = frappe.db.get_value("User", user.referred_by, "full_name")
+
+	return users
+
+
+@frappe.whitelist()
+def get_payment_enrollments(filters=None, start=0, limit=50):
+	"""
+	Get payment and enrollment data for n8n integration.
+	Requires System Manager role.
+	"""
+	frappe.only_for("System Manager")
+
+	payment_filters = {}
+	if filters:
+		payment_filters.update(filters if isinstance(filters, dict) else json.loads(filters))
+
+	payments = frappe.get_all(
+		"LMS Payment",
+		filters=payment_filters,
+		fields=[
+			"name", "member", "billing_name", "amount", "currency",
+			"payment_for_document_type", "payment_for_document",
+			"status", "payment_received", "creation"
+		],
+		order_by="creation desc",
+		start=cint(start),
+		limit_page_length=cint(limit)
+	)
+
+	# Enrich with document title and member info
+	for p in payments:
+		p.member_name = frappe.db.get_value("User", p.member, "full_name")
+		if p.payment_for_document:
+			p.document_title = frappe.db.get_value(
+				p.payment_for_document_type,
+				p.payment_for_document,
+				"title"
+			)
+
+	return payments
+
+
+def generate_referral_code(user_email):
+	"""
+	Generate a unique referral code for a user.
+	Format: ABL-XXXX (4 random alphanumeric characters)
+	"""
+	import random
+	import string
+
+	prefix = "ABL"
+	chars = string.ascii_uppercase + string.digits
+
+	while True:
+		code = f"{prefix}-{''.join(random.choices(chars, k=4))}"
+		if not frappe.db.exists("User", {"referral_code": code}):
+			return code
+
+
+def create_referral_commission(payment_doc):
+	"""
+	Create a referral commission record when a referred user makes a purchase.
+	Called from payment gateway after successful payment.
+	"""
+	member = payment_doc.member
+
+	# Check if this user was referred
+	referred_by = frappe.db.get_value("User", member, "referred_by")
+	if not referred_by:
+		return None
+
+	# Check if commission already exists for this payment
+	if frappe.db.exists("LMS Referral Commission", {"payment": payment_doc.name}):
+		return None
+
+	# Calculate commission (10%)
+	commission_rate = 10
+	commission_amount = (payment_doc.amount * commission_rate) / 100
+
+	# Create commission record
+	commission = frappe.new_doc("LMS Referral Commission")
+	commission.update({
+		"referrer": referred_by,
+		"referred_student": member,
+		"payment": payment_doc.name,
+		"purchase_type": payment_doc.payment_for_document_type,
+		"purchase_document": payment_doc.payment_for_document,
+		"total_amount": payment_doc.amount,
+		"commission_rate": commission_rate,
+		"commission_amount": commission_amount,
+		"payout_status": "Unpaid"
+	})
+	commission.insert(ignore_permissions=True)
+
+	return commission.name
+
+
+# ============================================
+# N8N Integration APIs
+# ============================================
+
+@frappe.whitelist(allow_guest=True)
+def generate_verification_link(email, api_key=None):
+	"""
+	Generate a fresh reset password key for email verification.
+	Called by n8n after user signup webhook.
+
+	Args:
+		email: User email address
+		api_key: Secret API key for authentication
+
+	Returns:
+		dict with verification_link and user info
+	"""
+	# Validate API key (set this in site_config.json as n8n_api_key)
+	expected_key = frappe.conf.get("n8n_api_key", "")
+	if not expected_key or api_key != expected_key:
+		frappe.throw(_("Invalid API key"), frappe.AuthenticationError)
+
+	# Check if user exists
+	if not frappe.db.exists("User", email):
+		frappe.throw(_("User not found"), frappe.DoesNotExistError)
+
+	# Generate new reset key
+	import hashlib
+	from frappe.utils import random_string
+	plain_key = random_string(32)
+
+	# Hash the key (Frappe validates against hashed key)
+	hashed_key = hashlib.sha256(plain_key.encode()).hexdigest()
+
+	# Update user with HASHED key
+	frappe.db.set_value("User", email, "reset_password_key", hashed_key)
+	frappe.db.commit()
+
+	# Get user details
+	user = frappe.db.get_value(
+		"User",
+		email,
+		["full_name", "name", "referred_by", "referral_code"],
+		as_dict=True
+	)
+
+	# Return plain key for email link
+	return {
+		"success": True,
+		"email": email,
+		"full_name": user.full_name,
+		"referred_by": user.referred_by or "",
+		"referral_code": user.referral_code or "",
+		"reset_key": plain_key,
+		"verification_link": f"https://lms.ablarsy.com/update-password?key={plain_key}"
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+def generate_otp(email, api_key=None):
+	"""
+	Generate a 6-digit OTP for email verification.
+	Called by n8n after user signup webhook.
+
+	Args:
+		email: User email address
+		api_key: Secret API key for authentication
+
+	Returns:
+		dict with OTP and user info for email
+	"""
+	import random
+
+	# Validate API key
+	expected_key = frappe.conf.get("n8n_api_key", "")
+	if not expected_key or api_key != expected_key:
+		frappe.throw(_("Invalid API key"), frappe.AuthenticationError)
+
+	# Check if user exists
+	if not frappe.db.exists("User", email):
+		frappe.throw(_("User not found"), frappe.DoesNotExistError)
+
+	# Generate 6-digit OTP
+	otp = str(random.randint(100000, 999999))
+
+	# Store OTP in cache with 10 minute expiry
+	cache_key = f"signup_otp:{email}"
+	frappe.cache.set_value(cache_key, otp, expires_in_sec=600)
+
+	# Get user details
+	user = frappe.db.get_value(
+		"User",
+		email,
+		["full_name", "name"],
+		as_dict=True
+	)
+
+	return {
+		"success": True,
+		"email": email,
+		"full_name": user.full_name,
+		"otp": otp
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+def verify_otp(email, otp):
+	"""
+	Verify OTP and return reset password key if valid.
+	Called from frontend verify-otp page.
+
+	Args:
+		email: User email address
+		otp: 6-digit OTP entered by user
+
+	Returns:
+		dict with reset_password_key if OTP is valid
+	"""
+	import hashlib
+	from frappe.utils import random_string
+
+	# Check if user exists
+	if not frappe.db.exists("User", email):
+		return {"success": False, "message": _("User not found")}
+
+	# Get stored OTP from cache
+	cache_key = f"signup_otp:{email}"
+	stored_otp = frappe.cache.get_value(cache_key)
+
+	if not stored_otp:
+		return {"success": False, "message": _("OTP expired. Please request a new one.")}
+
+	if stored_otp != otp:
+		return {"success": False, "message": _("Invalid OTP. Please try again.")}
+
+	# OTP is valid - delete it from cache
+	frappe.cache.delete_value(cache_key)
+
+	# Generate reset password key
+	plain_key = random_string(32)
+	hashed_key = hashlib.sha256(plain_key.encode()).hexdigest()
+
+	# Update user with hashed key
+	frappe.db.set_value("User", email, "reset_password_key", hashed_key)
+	frappe.db.commit()
+
+	return {
+		"success": True,
+		"message": _("OTP verified successfully"),
+		"reset_key": plain_key
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+def resend_otp(email):
+	"""
+	Resend OTP for email verification.
+	Triggers n8n webhook to send new OTP.
+
+	Args:
+		email: User email address
+
+	Returns:
+		dict with success status
+	"""
+	# Check if user exists
+	if not frappe.db.exists("User", email):
+		return {"success": False, "message": _("User not found")}
+
+	# Just return success - n8n will handle the actual sending
+	# Frontend should call n8n webhook to trigger new OTP
+	return {
+		"success": True,
+		"message": _("Please wait for new OTP")
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+def global_search(query):
+	"""
+	Global search for courses and batches.
+
+	Args:
+		query: Search query string
+
+	Returns:
+		dict with courses and batches lists
+	"""
+	from lms.lms.utils import get_course_details, get_batch_card_details
+
+	if not query or len(query) < 2:
+		return {"courses": [], "batches": []}
+
+	# Search Courses
+	courses = frappe.get_all(
+		"LMS Course",
+		filters={
+			"published": 1,
+			"title": ["like", f"%{query}%"]
+		},
+		fields=["name", "title", "short_introduction", "image", "paid_course", "course_price", "currency"],
+		limit=10,
+		order_by="title asc"
+	)
+
+	# Get course details
+	course_results = []
+	for course in courses:
+		try:
+			details = get_course_details(course.name)
+			course_results.append(details)
+		except Exception:
+			continue
+
+	# Search Batches
+	batches = frappe.get_all(
+		"LMS Batch",
+		filters={
+			"published": 1,
+			"title": ["like", f"%{query}%"]
+		},
+		fields=[
+			"name", "title", "description", "seat_count", "paid_batch",
+			"amount", "amount_usd", "currency", "start_date", "end_date",
+			"start_time", "end_time", "timezone", "category"
+		],
+		limit=10,
+		order_by="start_date asc"
+	)
+
+	# Get batch card details
+	batch_results = get_batch_card_details(batches)
+
+	return {
+		"courses": course_results,
+		"batches": batch_results
+	}
+
+
+@frappe.whitelist()
+def get_payout_info():
+	"""Get user's payout information for receiving referral commissions."""
+	user = frappe.session.user
+
+	if user == "Guest":
+		frappe.throw(_("Please login to view payout information"))
+
+	payout_info = frappe.db.get_value(
+		"User",
+		user,
+		["payout_method", "payout_phone", "payout_bank", "payout_account_number", "payout_account_name"],
+		as_dict=True
+	)
+
+	return {
+		"payout_method": payout_info.payout_method or "",
+		"payout_phone": payout_info.payout_phone or "",
+		"payout_bank": payout_info.payout_bank or "",
+		"payout_account_number": payout_info.payout_account_number or "",
+		"payout_account_name": payout_info.payout_account_name or "",
+	}
+
+
+@frappe.whitelist()
+def update_payout_info(payout_method=None, payout_phone=None, payout_bank=None,
+                       payout_account_number=None, payout_account_name=None):
+	"""Update user's payout information for receiving referral commissions."""
+	user = frappe.session.user
+
+	if user == "Guest":
+		frappe.throw(_("Please login to update payout information"))
+
+	# Validate payout method
+	valid_methods = ["", "GoPay", "Dana", "ShopeePay", "OVO", "Bank Transfer"]
+	if payout_method and payout_method not in valid_methods:
+		frappe.throw(_("Invalid payout method"))
+
+	# Validate bank if bank transfer selected
+	valid_banks = ["", "BCA", "Mandiri", "BRI", "BNI", "Aladin"]
+	if payout_method == "Bank Transfer":
+		if payout_bank and payout_bank not in valid_banks:
+			frappe.throw(_("Invalid bank selection"))
+
+	# Update user record
+	user_doc = frappe.get_doc("User", user)
+	user_doc.payout_method = payout_method or ""
+	user_doc.payout_phone = payout_phone or ""
+	user_doc.payout_bank = payout_bank or ""
+	user_doc.payout_account_number = payout_account_number or ""
+	user_doc.payout_account_name = payout_account_name or ""
+	user_doc.save(ignore_permissions=True)
+
+	return {
+		"success": True,
+		"message": _("Payout information updated successfully")
+	}
+
+
+# =============================================================================
+# COMPREHENSIVE API SUITE - Professional LMS Integration APIs
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# COURSE MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist(allow_guest=True)
+def api_get_courses(published=None, paid_course=None, category=None, featured=None,
+                    upcoming=None, start=0, limit=20):
+	"""
+	Get list of courses with optional filters.
+
+	Parameters:
+	- published (int): 0 or 1 to filter by published status
+	- paid_course (int): 0 or 1 to filter by paid status
+	- category (str): Category name to filter
+	- featured (int): 0 or 1 to filter featured courses
+	- upcoming (int): 0 or 1 to filter upcoming courses
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	base_filters = {}
+
+	if published is not None:
+		base_filters["published"] = cint(published)
+	if paid_course is not None:
+		base_filters["paid_course"] = cint(paid_course)
+	if category:
+		base_filters["category"] = category
+	if featured is not None:
+		base_filters["featured"] = cint(featured)
+	if upcoming is not None:
+		base_filters["upcoming"] = cint(upcoming)
+
+	courses = frappe.get_all(
+		"LMS Course",
+		filters=base_filters,
+		fields=[
+			"name", "title", "short_introduction", "image", "published",
+			"paid_course", "course_price", "currency", "category",
+			"rating", "enrollments", "lessons", "featured", "upcoming"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="creation desc"
+	)
+
+	for course in courses:
+		course["instructors"] = frappe.get_all(
+			"Course Instructor",
+			filters={"parent": course.name},
+			fields=["instructor"],
+			pluck="instructor"
+		)
+
+	total = frappe.db.count("LMS Course", filters=base_filters)
+	return {"data": courses, "total": total}
+
+
+@frappe.whitelist(allow_guest=True)
+def api_get_course(name):
+	"""Get single course detail by name/ID."""
+	if not frappe.db.exists("LMS Course", name):
+		frappe.throw(_("Course not found"), frappe.DoesNotExistError)
+
+	course = frappe.get_doc("LMS Course", name)
+
+	# Get chapters with lessons
+	chapters = []
+	for ch_ref in course.chapters:
+		chapter = frappe.get_doc("Course Chapter", ch_ref.chapter)
+		lessons = frappe.get_all(
+			"Course Lesson",
+			filters={"chapter": chapter.name},
+			fields=["name", "title", "include_in_preview", "youtube", "quiz_id"],
+			order_by="creation asc"
+		)
+		chapters.append({
+			"name": chapter.name,
+			"title": chapter.title,
+			"lessons": lessons
+		})
+
+	instructors = [{"email": i.instructor, "name": frappe.db.get_value("User", i.instructor, "full_name")}
+				   for i in course.instructors]
+
+	return {
+		"name": course.name,
+		"title": course.title,
+		"description": course.description,
+		"short_introduction": course.short_introduction,
+		"image": course.image,
+		"video_link": course.video_link,
+		"published": course.published,
+		"paid_course": course.paid_course,
+		"course_price": course.course_price,
+		"currency": course.currency,
+		"category": course.category,
+		"rating": course.rating,
+		"enrollments": course.enrollments,
+		"lessons": course.lessons,
+		"instructors": instructors,
+		"chapters": chapters,
+		"enable_certification": course.enable_certification,
+		"creation": course.creation,
+		"modified": course.modified
+	}
+
+
+@frappe.whitelist()
+def api_update_course(name, title=None, description=None, short_introduction=None,
+                      image=None, video_link=None, published=None, paid_course=None,
+                      course_price=None, currency=None, category=None, featured=None,
+                      upcoming=None, enable_certification=None, tags=None):
+	"""
+	Update course by ID/name. Admin/Moderator/Course Creator only.
+
+	Parameters:
+	- name (str): Course ID/name - REQUIRED for identifying which course to update
+	- title (str): Course title
+	- description (str): Full course description (HTML)
+	- short_introduction (str): Short course description
+	- image (str): Course image URL
+	- video_link (str): Intro video URL
+	- published (int): 0 or 1
+	- paid_course (int): 0 or 1
+	- course_price (float): Course price
+	- currency (str): Currency code (IDR, USD, etc)
+	- category (str): Category name
+	- featured (int): 0 or 1
+	- upcoming (int): 0 or 1
+	- enable_certification (int): 0 or 1
+	- tags (str): Comma-separated tags
+	"""
+	frappe.only_for(["System Manager", "Moderator", "Course Creator"])
+
+	if not frappe.db.exists("LMS Course", name):
+		frappe.throw(_("Course not found"), frappe.DoesNotExistError)
+
+	doc = frappe.get_doc("LMS Course", name)
+
+	# Update fields if provided
+	if title is not None:
+		doc.title = title
+	if description is not None:
+		doc.description = description
+	if short_introduction is not None:
+		doc.short_introduction = short_introduction
+	if image is not None:
+		doc.image = image
+	if video_link is not None:
+		doc.video_link = video_link
+	if published is not None:
+		doc.published = cint(published)
+	if paid_course is not None:
+		doc.paid_course = cint(paid_course)
+	if course_price is not None:
+		doc.course_price = flt(course_price)
+	if currency is not None:
+		doc.currency = currency
+	if category is not None:
+		doc.category = category
+	if featured is not None:
+		doc.featured = cint(featured)
+	if upcoming is not None:
+		doc.upcoming = cint(upcoming)
+	if enable_certification is not None:
+		doc.enable_certification = cint(enable_certification)
+	if tags is not None:
+		doc.tags = tags
+
+	doc.save(ignore_permissions=True)
+	return {"success": True, "name": doc.name, "message": "Course updated successfully"}
+
+
+# -----------------------------------------------------------------------------
+# BATCH MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist(allow_guest=True)
+def api_get_batches(published=None, paid_batch=None, category=None, medium=None,
+                    start_date_from=None, start_date_to=None, start=0, limit=20):
+	"""
+	Get list of batches with optional filters.
+
+	Parameters:
+	- published (int): 0 or 1 to filter by published status
+	- paid_batch (int): 0 or 1 to filter by paid status
+	- category (str): Category name to filter
+	- medium (str): Medium (Online/Offline)
+	- start_date_from (str): Filter batches starting from this date (YYYY-MM-DD)
+	- start_date_to (str): Filter batches starting until this date (YYYY-MM-DD)
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	base_filters = {}
+
+	if published is not None:
+		base_filters["published"] = cint(published)
+	if paid_batch is not None:
+		base_filters["paid_batch"] = cint(paid_batch)
+	if category:
+		base_filters["category"] = category
+	if medium:
+		base_filters["medium"] = medium
+	if start_date_from:
+		base_filters["start_date"] = [">=", start_date_from]
+	if start_date_to:
+		if "start_date" in base_filters:
+			# Already has from filter, need to use between
+			base_filters["start_date"] = ["between", [start_date_from, start_date_to]]
+		else:
+			base_filters["start_date"] = ["<=", start_date_to]
+
+	batches = frappe.get_all(
+		"LMS Batch",
+		filters=base_filters,
+		fields=[
+			"name", "title", "description", "meta_image", "published",
+			"paid_batch", "amount", "currency", "start_date", "end_date",
+			"start_time", "end_time", "timezone", "seat_count", "category",
+			"medium", "certification"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="start_date desc"
+	)
+
+	for batch in batches:
+		batch["enrolled_count"] = frappe.db.count("LMS Batch Enrollment", {"batch": batch.name})
+		batch["courses"] = frappe.get_all(
+			"Batch Course",
+			filters={"parent": batch.name},
+			fields=["course"],
+			pluck="course"
+		)
+
+	total = frappe.db.count("LMS Batch", filters=base_filters)
+	return {"data": batches, "total": total}
+
+
+@frappe.whitelist(allow_guest=True)
+def api_get_batch(name):
+	"""Get single batch detail by name/ID."""
+	if not frappe.db.exists("LMS Batch", name):
+		frappe.throw(_("Batch not found"), frappe.DoesNotExistError)
+
+	batch = frappe.get_doc("LMS Batch", name)
+
+	courses = []
+	for bc in batch.courses:
+		course_title = frappe.db.get_value("LMS Course", bc.course, "title")
+		courses.append({"name": bc.course, "title": course_title})
+
+	instructors = [{"email": i.instructor, "name": frappe.db.get_value("User", i.instructor, "full_name")}
+				   for i in batch.instructors]
+
+	enrolled_count = frappe.db.count("LMS Batch Enrollment", {"batch": batch.name})
+
+	return {
+		"name": batch.name,
+		"title": batch.title,
+		"description": batch.description,
+		"batch_details": batch.batch_details,
+		"meta_image": batch.meta_image,
+		"published": batch.published,
+		"paid_batch": batch.paid_batch,
+		"amount": batch.amount,
+		"currency": batch.currency,
+		"start_date": str(batch.start_date) if batch.start_date else None,
+		"end_date": str(batch.end_date) if batch.end_date else None,
+		"start_time": str(batch.start_time) if batch.start_time else None,
+		"end_time": str(batch.end_time) if batch.end_time else None,
+		"timezone": batch.timezone,
+		"seat_count": batch.seat_count,
+		"enrolled_count": enrolled_count,
+		"seats_available": batch.seat_count - enrolled_count if batch.seat_count else None,
+		"category": batch.category,
+		"medium": batch.medium,
+		"certification": batch.certification,
+		"courses": courses,
+		"instructors": instructors,
+		"creation": batch.creation,
+		"modified": batch.modified
+	}
+
+
+@frappe.whitelist()
+def api_update_batch(name, title=None, description=None, batch_details=None,
+                    meta_image=None, published=None, paid_batch=None, amount=None,
+                    currency=None, start_date=None, end_date=None, start_time=None,
+                    end_time=None, timezone=None, seat_count=None, category=None,
+                    medium=None, certification=None):
+	"""
+	Update batch by ID/name. Admin/Moderator only.
+
+	Parameters:
+	- name (str): Batch ID/name - REQUIRED for identifying which batch to update
+	- title (str): Batch title
+	- description (str): Short description
+	- batch_details (str): Full batch details (HTML)
+	- meta_image (str): Batch image URL
+	- published (int): 0 or 1
+	- paid_batch (int): 0 or 1
+	- amount (float): Batch price
+	- currency (str): Currency code
+	- start_date (str): Start date (YYYY-MM-DD)
+	- end_date (str): End date (YYYY-MM-DD)
+	- start_time (str): Start time (HH:MM:SS)
+	- end_time (str): End time (HH:MM:SS)
+	- timezone (str): Timezone
+	- seat_count (int): Maximum seats
+	- category (str): Category name
+	- medium (str): Online/Offline
+	- certification (int): 0 or 1
+	"""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	if not frappe.db.exists("LMS Batch", name):
+		frappe.throw(_("Batch not found"), frappe.DoesNotExistError)
+
+	doc = frappe.get_doc("LMS Batch", name)
+
+	# Update fields if provided
+	if title is not None:
+		doc.title = title
+	if description is not None:
+		doc.description = description
+	if batch_details is not None:
+		doc.batch_details = batch_details
+	if meta_image is not None:
+		doc.meta_image = meta_image
+	if published is not None:
+		doc.published = cint(published)
+	if paid_batch is not None:
+		doc.paid_batch = cint(paid_batch)
+	if amount is not None:
+		doc.amount = flt(amount)
+	if currency is not None:
+		doc.currency = currency
+	if start_date is not None:
+		doc.start_date = start_date
+	if end_date is not None:
+		doc.end_date = end_date
+	if start_time is not None:
+		doc.start_time = start_time
+	if end_time is not None:
+		doc.end_time = end_time
+	if timezone is not None:
+		doc.timezone = timezone
+	if seat_count is not None:
+		doc.seat_count = cint(seat_count)
+	if category is not None:
+		doc.category = category
+	if medium is not None:
+		doc.medium = medium
+	if certification is not None:
+		doc.certification = cint(certification)
+
+	doc.save(ignore_permissions=True)
+	return {"success": True, "name": doc.name, "message": "Batch updated successfully"}
+
+
+# -----------------------------------------------------------------------------
+# ENROLLMENT MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_get_enrollments(course=None, member=None, progress_min=None, progress_max=None,
+                        start=0, limit=50):
+	"""
+	Get list of course enrollments. Admin can see all, users see their own.
+
+	Parameters:
+	- course (str): Filter by course ID/name
+	- member (str): Filter by member email (Admin only)
+	- progress_min (int): Filter enrollments with progress >= this value
+	- progress_max (int): Filter enrollments with progress <= this value
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	user = frappe.session.user
+	roles = frappe.get_roles(user)
+
+	base_filters = {}
+
+	if course:
+		base_filters["course"] = course
+	if progress_min is not None:
+		base_filters["progress"] = [">=", cint(progress_min)]
+	if progress_max is not None:
+		if "progress" in base_filters:
+			base_filters["progress"] = ["between", [cint(progress_min), cint(progress_max)]]
+		else:
+			base_filters["progress"] = ["<=", cint(progress_max)]
+
+	# Non-admin can only see their own enrollments
+	if "System Manager" not in roles and "Moderator" not in roles:
+		base_filters["member"] = user
+	elif member:
+		base_filters["member"] = member
+
+	enrollments = frappe.get_all(
+		"LMS Enrollment",
+		filters=base_filters,
+		fields=[
+			"name", "course", "member", "member_name", "progress",
+			"current_lesson", "payment", "purchased_certificate", "creation"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="creation desc"
+	)
+
+	for e in enrollments:
+		e["course_title"] = frappe.db.get_value("LMS Course", e.course, "title")
+
+	total = frappe.db.count("LMS Enrollment", filters=base_filters)
+	return {"data": enrollments, "total": total}
+
+
+@frappe.whitelist()
+def api_create_enrollment(course, member, payment=None):
+	"""Create course enrollment. Admin only."""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	if not frappe.db.exists("LMS Course", course):
+		frappe.throw(_("Course not found"))
+	if not frappe.db.exists("User", member):
+		frappe.throw(_("User not found"))
+
+	# Check if already enrolled
+	if frappe.db.exists("LMS Enrollment", {"course": course, "member": member}):
+		frappe.throw(_("User is already enrolled in this course"))
+
+	doc = frappe.get_doc({
+		"doctype": "LMS Enrollment",
+		"course": course,
+		"member": member,
+		"payment": payment
+	})
+	doc.flags.from_batch_enrollment = True  # Skip payment validation
+	doc.insert(ignore_permissions=True)
+
+	return {"success": True, "name": doc.name}
+
+
+@frappe.whitelist()
+def api_update_enrollment(name, progress=None, current_lesson=None, purchased_certificate=None):
+	"""
+	Update enrollment by ID/name. Admin/Moderator only.
+
+	Parameters:
+	- name (str): Enrollment ID - REQUIRED for identifying which enrollment to update
+	- progress (int): Progress percentage (0-100)
+	- current_lesson (str): Current lesson ID/name
+	- purchased_certificate (int): 0 or 1
+	"""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	if not frappe.db.exists("LMS Enrollment", name):
+		frappe.throw(_("Enrollment not found"))
+
+	doc = frappe.get_doc("LMS Enrollment", name)
+
+	if progress is not None:
+		doc.progress = cint(progress)
+	if current_lesson is not None:
+		doc.current_lesson = current_lesson
+	if purchased_certificate is not None:
+		doc.purchased_certificate = cint(purchased_certificate)
+
+	doc.save(ignore_permissions=True)
+	return {"success": True, "name": doc.name, "message": "Enrollment updated successfully"}
+
+
+# -----------------------------------------------------------------------------
+# BATCH ENROLLMENT MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_get_batch_enrollments(batch=None, member=None, start=0, limit=50):
+	"""
+	Get list of batch enrollments. Admin can see all, users see their own.
+
+	Parameters:
+	- batch (str): Filter by batch ID/name
+	- member (str): Filter by member email (Admin only)
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	user = frappe.session.user
+	roles = frappe.get_roles(user)
+
+	base_filters = {}
+
+	if batch:
+		base_filters["batch"] = batch
+
+	if "System Manager" not in roles and "Moderator" not in roles:
+		base_filters["member"] = user
+	elif member:
+		base_filters["member"] = member
+
+	enrollments = frappe.get_all(
+		"LMS Batch Enrollment",
+		filters=base_filters,
+		fields=[
+			"name", "batch", "member", "member_name", "payment",
+			"source", "confirmation_email_sent", "creation"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="creation desc"
+	)
+
+	for e in enrollments:
+		e["batch_title"] = frappe.db.get_value("LMS Batch", e.batch, "title")
+
+	total = frappe.db.count("LMS Batch Enrollment", filters=base_filters)
+	return {"data": enrollments, "total": total}
+
+
+@frappe.whitelist()
+def api_create_batch_enrollment(batch, member, payment=None):
+	"""Create batch enrollment. Admin only."""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	if not frappe.db.exists("LMS Batch", batch):
+		frappe.throw(_("Batch not found"))
+	if not frappe.db.exists("User", member):
+		frappe.throw(_("User not found"))
+
+	if frappe.db.exists("LMS Batch Enrollment", {"batch": batch, "member": member}):
+		frappe.throw(_("User is already enrolled in this batch"))
+
+	doc = frappe.get_doc({
+		"doctype": "LMS Batch Enrollment",
+		"batch": batch,
+		"member": member,
+		"payment": payment
+	})
+	doc.insert(ignore_permissions=True)
+
+	return {"success": True, "name": doc.name}
+
+
+# -----------------------------------------------------------------------------
+# PAYMENT MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_get_payments(member=None, status=None, payment_for_document=None,
+                    date_from=None, date_to=None, start=0, limit=50):
+	"""
+	Get list of payments. Admin only.
+
+	Parameters:
+	- member (str): Filter by member email
+	- status (str): Filter by status (Pending/Paid/Expired/Cancelled)
+	- payment_for_document (str): Filter by batch/course name
+	- date_from (str): Filter payments from this date (YYYY-MM-DD)
+	- date_to (str): Filter payments until this date (YYYY-MM-DD)
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	frappe.only_for("System Manager")
+
+	base_filters = {}
+
+	if member:
+		base_filters["member"] = member
+	if status:
+		base_filters["status"] = status
+	if payment_for_document:
+		base_filters["payment_for_document"] = payment_for_document
+	if date_from:
+		base_filters["creation"] = [">=", date_from]
+	if date_to:
+		if "creation" in base_filters:
+			base_filters["creation"] = ["between", [date_from, date_to]]
+		else:
+			base_filters["creation"] = ["<=", date_to]
+
+	payments = frappe.get_all(
+		"LMS Payment",
+		filters=base_filters,
+		fields=[
+			"name", "member", "billing_name", "amount", "currency", "status",
+			"payment_for_document_type", "payment_for_document", "payment_received",
+			"coupon_code", "discount_amount", "original_amount",
+			"midtrans_order_id", "midtrans_payment_type", "creation"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="creation desc"
+	)
+
+	total = frappe.db.count("LMS Payment", filters=base_filters)
+	return {"data": payments, "total": total}
+
+
+@frappe.whitelist()
+def api_get_payment(name):
+	"""Get single payment detail. Admin only."""
+	frappe.only_for("System Manager")
+
+	if not frappe.db.exists("LMS Payment", name):
+		frappe.throw(_("Payment not found"))
+
+	payment = frappe.get_doc("LMS Payment", name)
+
+	return {
+		"name": payment.name,
+		"member": payment.member,
+		"billing_name": payment.billing_name,
+		"amount": payment.amount,
+		"original_amount": payment.original_amount,
+		"discount_amount": payment.discount_amount,
+		"currency": payment.currency,
+		"status": payment.status,
+		"payment_received": payment.payment_received,
+		"payment_for_document_type": payment.payment_for_document_type,
+		"payment_for_document": payment.payment_for_document,
+		"coupon": payment.coupon,
+		"coupon_code": payment.coupon_code,
+		"address": payment.address,
+		"midtrans_order_id": payment.midtrans_order_id,
+		"midtrans_transaction_id": payment.midtrans_transaction_id,
+		"midtrans_payment_type": payment.midtrans_payment_type,
+		"midtrans_bank": payment.midtrans_bank,
+		"midtrans_issuer": payment.midtrans_issuer,
+		"midtrans_va_number": payment.midtrans_va_number,
+		"creation": payment.creation,
+		"modified": payment.modified
+	}
+
+
+@frappe.whitelist()
+def api_update_payment(name, status=None, payment_received=None):
+	"""
+	Update payment by ID/name. Admin only. Useful for marking manual payments.
+
+	Parameters:
+	- name (str): Payment ID - REQUIRED for identifying which payment to update
+	- status (str): Payment status (Pending/Paid/Expired/Cancelled)
+	- payment_received (int): 0 or 1 to mark if payment has been received
+	"""
+	frappe.only_for("System Manager")
+
+	if not frappe.db.exists("LMS Payment", name):
+		frappe.throw(_("Payment not found"))
+
+	doc = frappe.get_doc("LMS Payment", name)
+
+	if status is not None:
+		doc.status = status
+	if payment_received is not None:
+		doc.payment_received = cint(payment_received)
+
+	doc.save(ignore_permissions=True)
+	return {"success": True, "name": doc.name, "message": "Payment updated successfully"}
+
+
+# -----------------------------------------------------------------------------
+# CERTIFICATE MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_get_certificates(member=None, course=None, batch_name=None, start=0, limit=50):
+	"""
+	Get list of certificates. Admin can see all, users see their own.
+
+	Parameters:
+	- member (str): Filter by member email (Admin only)
+	- course (str): Filter by course ID/name
+	- batch_name (str): Filter by batch ID/name
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	user = frappe.session.user
+	roles = frappe.get_roles(user)
+
+	base_filters = {}
+
+	if course:
+		base_filters["course"] = course
+	if batch_name:
+		base_filters["batch_name"] = batch_name
+
+	if "System Manager" not in roles and "Moderator" not in roles:
+		base_filters["member"] = user
+	elif member:
+		base_filters["member"] = member
+
+	certificates = frappe.get_all(
+		"LMS Certificate",
+		filters=base_filters,
+		fields=[
+			"name", "member", "member_name", "course", "course_title",
+			"batch_name", "batch_title", "issue_date", "expiry_date",
+			"template", "published", "evaluator_name", "creation"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="issue_date desc"
+	)
+
+	total = frappe.db.count("LMS Certificate", filters=base_filters)
+	return {"data": certificates, "total": total}
+
+
+@frappe.whitelist(allow_guest=True)
+def api_verify_certificate(certificate_id):
+	"""Public API to verify certificate authenticity."""
+	if not frappe.db.exists("LMS Certificate", certificate_id):
+		return {"valid": False, "message": "Certificate not found"}
+
+	cert = frappe.get_doc("LMS Certificate", certificate_id)
+
+	return {
+		"valid": True,
+		"certificate_id": cert.name,
+		"member_name": cert.member_name,
+		"course_title": cert.course_title or cert.batch_title,
+		"issue_date": str(cert.issue_date) if cert.issue_date else None,
+		"expiry_date": str(cert.expiry_date) if cert.expiry_date else None,
+		"published": cert.published
+	}
+
+
+@frappe.whitelist()
+def api_issue_certificate(member, course=None, batch_name=None, template=None, issue_date=None):
+	"""Issue a new certificate. Admin only."""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	if not course and not batch_name:
+		frappe.throw(_("Either course or batch must be specified"))
+
+	if not frappe.db.exists("User", member):
+		frappe.throw(_("User not found"))
+
+	doc = frappe.get_doc({
+		"doctype": "LMS Certificate",
+		"member": member,
+		"course": course,
+		"batch_name": batch_name,
+		"template": template or "LMS Certificate",
+		"issue_date": issue_date or frappe.utils.today(),
+		"published": 1
+	})
+	doc.insert(ignore_permissions=True)
+
+	return {"success": True, "name": doc.name}
+
+
+# -----------------------------------------------------------------------------
+# QUIZ MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist(allow_guest=True)
+def api_get_quizzes(course=None, lesson=None, start=0, limit=20):
+	"""
+	Get list of quizzes.
+
+	Parameters:
+	- course (str): Filter by course ID/name
+	- lesson (str): Filter by lesson ID/name
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	base_filters = {}
+
+	if course:
+		base_filters["course"] = course
+	if lesson:
+		base_filters["lesson"] = lesson
+
+	quizzes = frappe.get_all(
+		"LMS Quiz",
+		filters=base_filters,
+		fields=[
+			"name", "title", "lesson", "course", "max_attempts",
+			"passing_percentage", "total_marks", "duration",
+			"shuffle_questions", "show_answers"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="creation desc"
+	)
+
+	for q in quizzes:
+		q["question_count"] = frappe.db.count("LMS Quiz Question", {"parent": q.name})
+
+	total = frappe.db.count("LMS Quiz", filters=base_filters)
+	return {"data": quizzes, "total": total}
+
+
+@frappe.whitelist(allow_guest=True)
+def api_get_quiz(name):
+	"""Get single quiz detail."""
+	if not frappe.db.exists("LMS Quiz", name):
+		frappe.throw(_("Quiz not found"))
+
+	quiz = frappe.get_doc("LMS Quiz", name)
+
+	questions = []
+	for q in quiz.questions:
+		question_doc = frappe.get_doc("LMS Question", q.question)
+		options = [{"option": o.option, "is_correct": o.is_correct} for o in question_doc.options]
+		questions.append({
+			"name": question_doc.name,
+			"question": question_doc.question,
+			"type": question_doc.type,
+			"marks": q.marks,
+			"options": options
+		})
+
+	return {
+		"name": quiz.name,
+		"title": quiz.title,
+		"max_attempts": quiz.max_attempts,
+		"passing_percentage": quiz.passing_percentage,
+		"total_marks": quiz.total_marks,
+		"duration": quiz.duration,
+		"shuffle_questions": quiz.shuffle_questions,
+		"show_answers": quiz.show_answers,
+		"questions": questions
+	}
+
+
+# -----------------------------------------------------------------------------
+# LIVE CLASS MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_get_live_classes(batch_name=None, host=None, date_from=None, date_to=None,
+                         start=0, limit=20):
+	"""
+	Get list of live classes.
+
+	Parameters:
+	- batch_name (str): Filter by batch ID/name
+	- host (str): Filter by host email
+	- date_from (str): Filter classes from this date (YYYY-MM-DD)
+	- date_to (str): Filter classes until this date (YYYY-MM-DD)
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	base_filters = {}
+
+	if batch_name:
+		base_filters["batch_name"] = batch_name
+	if host:
+		base_filters["host"] = host
+	if date_from:
+		base_filters["date"] = [">=", date_from]
+	if date_to:
+		if "date" in base_filters:
+			base_filters["date"] = ["between", [date_from, date_to]]
+		else:
+			base_filters["date"] = ["<=", date_to]
+
+	classes = frappe.get_all(
+		"LMS Live Class",
+		filters=base_filters,
+		fields=[
+			"name", "title", "host", "batch_name", "date", "time",
+			"duration", "timezone", "meeting_platform", "join_url",
+			"attendees", "creation"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="date desc, time desc"
+	)
+
+	for c in classes:
+		c["host_name"] = frappe.db.get_value("User", c.host, "full_name")
+		c["batch_title"] = frappe.db.get_value("LMS Batch", c.batch_name, "title") if c.batch_name else None
+
+	total = frappe.db.count("LMS Live Class", filters=base_filters)
+	return {"data": classes, "total": total}
+
+
+@frappe.whitelist()
+def api_create_live_class(title, host, date, time, duration, timezone,
+                          meeting_platform="Google Meet", batch_name=None,
+                          google_meet_link=None, description=None):
+	"""Create a new live class. Admin only."""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	doc = frappe.get_doc({
+		"doctype": "LMS Live Class",
+		"title": title,
+		"host": host,
+		"date": date,
+		"time": time,
+		"duration": cint(duration),
+		"timezone": timezone,
+		"meeting_platform": meeting_platform,
+		"batch_name": batch_name,
+		"google_meet_link": google_meet_link,
+		"description": description
+	})
+	doc.insert(ignore_permissions=True)
+
+	return {"success": True, "name": doc.name, "join_url": doc.join_url or doc.google_meet_link}
+
+
+@frappe.whitelist()
+def api_update_live_class(name, title=None, date=None, time=None, duration=None,
+                          timezone=None, description=None, meeting_platform=None,
+                          google_meet_link=None):
+	"""
+	Update live class by ID/name. Admin/Moderator only.
+
+	Parameters:
+	- name (str): Live Class ID - REQUIRED for identifying which class to update
+	- title (str): Class title
+	- date (str): Date (YYYY-MM-DD)
+	- time (str): Time (HH:MM:SS)
+	- duration (int): Duration in minutes
+	- timezone (str): Timezone
+	- description (str): Class description
+	- meeting_platform (str): Google Meet/Zoom/etc
+	- google_meet_link (str): Google Meet link
+	"""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	if not frappe.db.exists("LMS Live Class", name):
+		frappe.throw(_("Live class not found"))
+
+	doc = frappe.get_doc("LMS Live Class", name)
+
+	if title is not None:
+		doc.title = title
+	if date is not None:
+		doc.date = date
+	if time is not None:
+		doc.time = time
+	if duration is not None:
+		doc.duration = cint(duration)
+	if timezone is not None:
+		doc.timezone = timezone
+	if description is not None:
+		doc.description = description
+	if meeting_platform is not None:
+		doc.meeting_platform = meeting_platform
+	if google_meet_link is not None:
+		doc.google_meet_link = google_meet_link
+
+	doc.save(ignore_permissions=True)
+	return {"success": True, "name": doc.name, "message": "Live class updated successfully"}
+
+
+# -----------------------------------------------------------------------------
+# BULK OPERATIONS APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_bulk_update_commissions(commission_ids, payout_status=None, payout_date=None, payout_notes=None):
+	"""
+	Bulk update multiple commission records. Admin only. Great for n8n.
+
+	Parameters:
+	- commission_ids (array/str): Array of commission IDs to update, or JSON string
+	- payout_status (str): New payout status (Pending/Processing/Paid)
+	- payout_date (str): Payout date (YYYY-MM-DD)
+	- payout_notes (str): Notes about the payout
+	"""
+	frappe.only_for("System Manager")
+
+	if isinstance(commission_ids, str):
+		commission_ids = json.loads(commission_ids)
+
+	updated = []
+	errors = []
+
+	for cid in commission_ids:
+		try:
+			if not frappe.db.exists("LMS Referral Commission", cid):
+				errors.append({"id": cid, "error": "Not found"})
+				continue
+
+			doc = frappe.get_doc("LMS Referral Commission", cid)
+
+			if payout_status is not None:
+				doc.payout_status = payout_status
+			if payout_date is not None:
+				doc.payout_date = payout_date
+			if payout_notes is not None and hasattr(doc, 'payout_notes'):
+				doc.payout_notes = payout_notes
+
+			doc.save(ignore_permissions=True)
+			updated.append(cid)
+		except Exception as e:
+			errors.append({"id": cid, "error": str(e)})
+
+	frappe.db.commit()
+	return {"updated": updated, "errors": errors, "total_updated": len(updated)}
+
+
+@frappe.whitelist()
+def api_get_user_profile(user_email=None):
+	"""Get user profile with payout info. Admin or self."""
+	if not user_email:
+		user_email = frappe.session.user
+
+	if user_email != frappe.session.user:
+		frappe.only_for("System Manager")
+
+	if not frappe.db.exists("User", user_email):
+		frappe.throw(_("User not found"))
+
+	user = frappe.get_doc("User", user_email)
+
+	return {
+		"email": user.email,
+		"full_name": user.full_name,
+		"username": user.username,
+		"user_image": user.user_image,
+		"enabled": user.enabled,
+		"referral_code": user.get("referral_code"),
+		"referred_by": user.get("referred_by"),
+		"payout_method": user.get("payout_method"),
+		"payout_phone": user.get("payout_phone"),
+		"payout_bank": user.get("payout_bank"),
+		"payout_account_number": user.get("payout_account_number"),
+		"payout_account_name": user.get("payout_account_name"),
+		"creation": user.creation
+	}
+
+
+# -----------------------------------------------------------------------------
+# COMMISSION MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_get_commissions(referrer=None, payout_status=None, date_from=None, date_to=None,
+                        start=0, limit=50):
+	"""
+	Get list of referral commissions. Admin only.
+
+	Parameters:
+	- referrer (str): Filter by referrer email
+	- payout_status (str): Filter by status (Pending/Processing/Paid)
+	- date_from (str): Filter from this date (YYYY-MM-DD)
+	- date_to (str): Filter until this date (YYYY-MM-DD)
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	frappe.only_for("System Manager")
+
+	base_filters = {}
+
+	if referrer:
+		base_filters["referrer"] = referrer
+	if payout_status:
+		base_filters["payout_status"] = payout_status
+	if date_from:
+		base_filters["creation"] = [">=", date_from]
+	if date_to:
+		if "creation" in base_filters:
+			base_filters["creation"] = ["between", [date_from, date_to]]
+		else:
+			base_filters["creation"] = ["<=", date_to]
+
+	commissions = frappe.get_all(
+		"LMS Referral Commission",
+		filters=base_filters,
+		fields=[
+			"name", "referrer", "referred_student", "payment", "purchase_type",
+			"commission_amount", "commission_rate", "payout_status", "payout_date",
+			"creation"
+		],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="creation desc"
+	)
+
+	for c in commissions:
+		c["referrer_name"] = frappe.db.get_value("User", c.referrer, "full_name")
+		c["student_name"] = frappe.db.get_value("User", c.referred_student, "full_name")
+
+	total = frappe.db.count("LMS Referral Commission", filters=base_filters)
+	return {"data": commissions, "total": total}
+
+
+@frappe.whitelist()
+def api_get_commission(name):
+	"""
+	Get single commission detail by ID. Admin only.
+
+	Parameters:
+	- name (str): Commission ID
+	"""
+	frappe.only_for("System Manager")
+
+	if not frappe.db.exists("LMS Referral Commission", name):
+		frappe.throw(_("Commission not found"))
+
+	doc = frappe.get_doc("LMS Referral Commission", name)
+
+	return {
+		"name": doc.name,
+		"referrer": doc.referrer,
+		"referrer_name": frappe.db.get_value("User", doc.referrer, "full_name"),
+		"referred_student": doc.referred_student,
+		"student_name": frappe.db.get_value("User", doc.referred_student, "full_name"),
+		"payment": doc.payment,
+		"purchase_type": doc.purchase_type,
+		"commission_amount": doc.commission_amount,
+		"commission_rate": doc.commission_rate,
+		"payout_status": doc.payout_status,
+		"payout_date": str(doc.payout_date) if doc.payout_date else None,
+		"creation": doc.creation,
+		"modified": doc.modified
+	}
+
+
+@frappe.whitelist()
+def api_update_commission(name, payout_status=None, payout_date=None):
+	"""
+	Update single commission by ID. Admin only.
+
+	Parameters:
+	- name (str): Commission ID - REQUIRED
+	- payout_status (str): Payout status (Pending/Processing/Paid)
+	- payout_date (str): Payout date (YYYY-MM-DD)
+	"""
+	frappe.only_for("System Manager")
+
+	if not frappe.db.exists("LMS Referral Commission", name):
+		frappe.throw(_("Commission not found"))
+
+	doc = frappe.get_doc("LMS Referral Commission", name)
+
+	if payout_status is not None:
+		doc.payout_status = payout_status
+	if payout_date is not None:
+		doc.payout_date = payout_date
+
+	doc.save(ignore_permissions=True)
+	return {"success": True, "name": doc.name, "message": "Commission updated successfully"}
+
+
+# -----------------------------------------------------------------------------
+# CATEGORY MANAGEMENT APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist(allow_guest=True)
+def api_get_categories(start=0, limit=100):
+	"""
+	Get list of all categories.
+
+	Parameters:
+	- start (int): Pagination offset
+	- limit (int): Number of records to return
+	"""
+	categories = frappe.get_all(
+		"LMS Category",
+		fields=["name", "category_name", "image"],
+		start=cint(start),
+		limit_page_length=cint(limit),
+		order_by="category_name asc"
+	)
+
+	for cat in categories:
+		cat["course_count"] = frappe.db.count("LMS Course", {"category": cat.name, "published": 1})
+		cat["batch_count"] = frappe.db.count("LMS Batch", {"category": cat.name, "published": 1})
+
+	total = frappe.db.count("LMS Category")
+	return {"data": categories, "total": total}
+
+
+@frappe.whitelist()
+def api_create_category(category_name, image=None):
+	"""
+	Create a new category. Admin/Moderator only.
+
+	Parameters:
+	- category_name (str): Category name - REQUIRED
+	- image (str): Category image URL
+	"""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	if frappe.db.exists("LMS Category", {"category_name": category_name}):
+		frappe.throw(_("Category already exists"))
+
+	doc = frappe.get_doc({
+		"doctype": "LMS Category",
+		"category_name": category_name,
+		"image": image
+	})
+	doc.insert(ignore_permissions=True)
+
+	return {"success": True, "name": doc.name, "message": "Category created successfully"}
+
+
+# -----------------------------------------------------------------------------
+# DASHBOARD & STATISTICS APIs
+# -----------------------------------------------------------------------------
+
+@frappe.whitelist()
+def api_get_dashboard_stats():
+	"""
+	Get dashboard statistics. Admin/Moderator only.
+	Returns counts for courses, batches, enrollments, revenue, etc.
+	"""
+	frappe.only_for(["System Manager", "Moderator"])
+
+	stats = {
+		"courses": {
+			"total": frappe.db.count("LMS Course"),
+			"published": frappe.db.count("LMS Course", {"published": 1}),
+			"paid": frappe.db.count("LMS Course", {"paid_course": 1})
+		},
+		"batches": {
+			"total": frappe.db.count("LMS Batch"),
+			"published": frappe.db.count("LMS Batch", {"published": 1}),
+			"paid": frappe.db.count("LMS Batch", {"paid_batch": 1})
+		},
+		"enrollments": {
+			"course_enrollments": frappe.db.count("LMS Enrollment"),
+			"batch_enrollments": frappe.db.count("LMS Batch Enrollment")
+		},
+		"users": {
+			"total": frappe.db.count("User", {"enabled": 1}),
+		},
+		"payments": {
+			"total": frappe.db.count("LMS Payment"),
+			"paid": frappe.db.count("LMS Payment", {"status": "Paid"}),
+			"pending": frappe.db.count("LMS Payment", {"status": "Pending"})
+		},
+		"certificates": {
+			"total": frappe.db.count("LMS Certificate"),
+			"published": frappe.db.count("LMS Certificate", {"published": 1})
+		},
+		"commissions": {
+			"total": frappe.db.count("LMS Referral Commission"),
+			"pending": frappe.db.count("LMS Referral Commission", {"payout_status": "Pending"}),
+			"paid": frappe.db.count("LMS Referral Commission", {"payout_status": "Paid"})
+		}
+	}
+
+	# Calculate total revenue
+	total_revenue = frappe.db.sql("""
+		SELECT SUM(amount) as total FROM `tabLMS Payment` WHERE status = 'Paid'
+	""", as_dict=True)
+	stats["revenue"] = {
+		"total_paid": flt(total_revenue[0].total) if total_revenue else 0
+	}
+
+	# Calculate pending commission amount
+	pending_commission = frappe.db.sql("""
+		SELECT SUM(commission_amount) as total FROM `tabLMS Referral Commission`
+		WHERE payout_status = 'Pending'
+	""", as_dict=True)
+	stats["commissions"]["pending_amount"] = flt(pending_commission[0].total) if pending_commission else 0
+
+	return stats
+
+
+@frappe.whitelist()
+def api_get_revenue_stats(date_from=None, date_to=None, group_by="day"):
+	"""
+	Get revenue statistics with date range. Admin only.
+
+	Parameters:
+	- date_from (str): Start date (YYYY-MM-DD)
+	- date_to (str): End date (YYYY-MM-DD)
+	- group_by (str): Group by 'day', 'week', or 'month'
+	"""
+	frappe.only_for("System Manager")
+
+	date_format = {
+		"day": "%Y-%m-%d",
+		"week": "%Y-%u",
+		"month": "%Y-%m"
+	}.get(group_by, "%Y-%m-%d")
+
+	filters = ["status = 'Paid'"]
+	if date_from:
+		filters.append(f"creation >= '{date_from}'")
+	if date_to:
+		filters.append(f"creation <= '{date_to} 23:59:59'")
+
+	where_clause = " AND ".join(filters)
+
+	revenue_data = frappe.db.sql(f"""
+		SELECT
+			DATE_FORMAT(creation, '{date_format}') as period,
+			COUNT(*) as transaction_count,
+			SUM(amount) as total_amount,
+			currency
+		FROM `tabLMS Payment`
+		WHERE {where_clause}
+		GROUP BY period, currency
+		ORDER BY period DESC
+	""", as_dict=True)
+
+	return {"data": revenue_data}

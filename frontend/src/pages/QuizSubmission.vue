@@ -15,12 +15,12 @@
 			</Button>
 		</div>
 	</header>
-	<div v-if="submissionDetails.doc" class="w-2/3 border-x mx-auto py-5">
+	<div v-if="submissionDetails.doc" class="w-full md:w-2/3 border-x mx-auto py-5 px-4 md:px-0">
 		<div class="text-xl px-10 font-semibold text-ink-gray-9 mb-5">
 			{{ submissionDetails.doc.member_name }}
 		</div>
 		<div class="space-y-4 border-b pb-5 px-10">
-			<div class="grid grid-cols-2 gap-5">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 				<FormControl
 					v-model="submissionDetails.doc.quiz_title"
 					:label="__('Quiz')"
@@ -33,7 +33,7 @@
 				/>
 			</div>
 
-			<div class="grid grid-cols-2 gap-5">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 				<FormControl
 					v-model="submissionDetails.doc.score"
 					:label="__('Score')"
@@ -60,7 +60,7 @@
 					<span class="font-semibold"> {{ __('Answer') }}: </span>
 					<span class="leading-5" v-html="row.answer"></span>
 				</div>
-				<div class="grid grid-cols-2 gap-5">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 					<FormControl v-model="row.marks" :label="__('Marks')" />
 					<FormControl
 						v-model="row.marks_out_of"

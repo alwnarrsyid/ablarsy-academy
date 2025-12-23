@@ -37,7 +37,12 @@
   "midtrans_token",
   "column_break_midtrans",
   "midtrans_transaction_id",
-  "midtrans_payment_type"
+  "midtrans_payment_type",
+  "midtrans_payment_details_section",
+  "midtrans_bank",
+  "midtrans_issuer",
+  "midtrans_acquirer",
+  "midtrans_va_number"
  ],
  "fields": [
   {
@@ -232,6 +237,41 @@
    "fieldtype": "Data",
    "label": "Midtrans Payment Type",
    "read_only": 1
+  },
+  {
+   "fieldname": "midtrans_payment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Method Details",
+   "collapsible": 1,
+   "depends_on": "midtrans_payment_type"
+  },
+  {
+   "fieldname": "midtrans_bank",
+   "fieldtype": "Data",
+   "label": "Bank Name",
+   "read_only": 1,
+   "description": "Bank used for transfer (BCA, BNI, Mandiri, etc.)"
+  },
+  {
+   "fieldname": "midtrans_issuer",
+   "fieldtype": "Data",
+   "label": "Payment Issuer",
+   "read_only": 1,
+   "description": "E-wallet or payment issuer (GoPay, OVO, DANA, etc.)"
+  },
+  {
+   "fieldname": "midtrans_acquirer",
+   "fieldtype": "Data",
+   "label": "Card Acquirer",
+   "read_only": 1,
+   "description": "Credit card acquirer bank"
+  },
+  {
+   "fieldname": "midtrans_va_number",
+   "fieldtype": "Data",
+   "label": "Virtual Account Number",
+   "read_only": 1,
+   "description": "VA number for bank transfer"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -1,99 +1,204 @@
-{% set custom_signup_content = frappe.db.get_single_value("LMS Settings", "custom_signup_content") %}
+{% set custom_signup_content = frappe.db.get_single_value("LMS Settings",
+"custom_signup_content") %}
 <form class="signup-form" role="form">
-    <div class="page-card-body">
-        <div class="form-group">
-            <label class="form-label sr-only" for="signup_fullname"> {{ _("Full Name") }} </label>
-            <input type="text" id="signup_fullname" class="form-control" placeholder="{{ _('Jane Doe') }}"
-            required autofocus>
-        </div>
-        <div class="form-group">
-            <label class="form-label sr-only" for="signup_email"> {{ _("Email") }} </label>
-            <input type="email" id="signup_email" class="form-control"
-            placeholder="{{ _('jane@example.com') }}" required>
-        </div>
+	<div class="page-card-body">
+		<div class="form-group">
+			<label class="form-label sr-only" for="signup_fullname">
+				{{ _("Full Name") }}
+			</label>
+			<input
+				type="text"
+				id="signup_fullname"
+				class="form-control"
+				placeholder="{{ _('Jane Doe') }}"
+				required
+				autofocus
+			/>
+		</div>
+		<div class="form-group">
+			<label class="form-label sr-only" for="signup_email">
+				{{ _("Email") }}
+			</label>
+			<input
+				type="email"
+				id="signup_email"
+				class="form-control"
+				placeholder="{{ _('jane@example.com') }}"
+				required
+			/>
+		</div>
 
-        {% if frappe.db.get_single_value("LMS Settings", "user_category") %}
-        <div class="form-group">
-            <label class="form-label sr-only"> {{ _("User Category") }} </label>
-            <div class="control-input-wrapper">
-                <div class="control-input flex align-center">
-                    <select type="text" id="user_category" data-fieldname="user_category" style="color: var(--text-light)"
-                    class="input-with-feedback form-control ellipsis" data-fieldtype="Select" required>
-                        <option value=""> {{ _("Category") }} </option>
-                        <option value="Business Owner"> {{ _("Business Owner") }} </option>
-                        <option value="Manager (Sales/Marketing/Customer)"> {{ _("Manager (Sales/Marketing/Customer)") }} </option>
-                        <option value="Employee"> {{ _("Employee") }} </option>
-                        <option value="Student"> {{ _("Student") }} </option>
-                        <option value="Freelancer/Just looking"> {{ _("Freelancer/Just looking") }} </option>
-                        <option value="Others"> {{ _("Others") }} </option>
-                    </select>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+		{% if frappe.db.get_single_value("LMS Settings", "user_category") %}
+		<div class="form-group">
+			<label class="form-label sr-only"> {{ _("User Category") }} </label>
+			<div class="control-input-wrapper">
+				<div class="control-input flex align-center">
+					<select
+						type="text"
+						id="user_category"
+						data-fieldname="user_category"
+						style="color: var(--text-light)"
+						class="input-with-feedback form-control ellipsis"
+						data-fieldtype="Select"
+						required
+					>
+						<option value="">{{ _("Category") }}</option>
+						<option value="Business Owner">
+							{{ _("Business Owner") }}
+						</option>
+						<option value="Manager (Sales/Marketing/Customer)">
+							{{ _("Manager (Sales/Marketing/Customer)") }}
+						</option>
+						<option value="Employee">{{ _("Employee") }}</option>
+						<option value="Student">{{ _("Student") }}</option>
+						<option value="Freelancer/Just looking">
+							{{ _("Freelancer/Just looking") }}
+						</option>
+						<option value="Others">{{ _("Others") }}</option>
+					</select>
+				</div>
+			</div>
+		</div>
+		{% endif %} {% if custom_signup_content %}
+		<div class="form-group">
+			<div class="checkbox">
+				<label>
+					<span class="input-area">
+						<input
+							type="checkbox"
+							autocomplete="off"
+							class="input-with-feedback"
+							data-fieldtype="Check"
+							data-fieldname="terms"
+							id="signup-terms"
+							required
+						/>
+					</span>
+					<span class="label-area">
+						{{ custom_signup_content }}
+					</span>
+				</label>
+			</div>
+		</div>
+		{% endif %}
 
-        {% if custom_signup_content %}
-        <div class="form-group">
-            <div class="checkbox">
-                <label>
-                    <span class="input-area">
-                    <input type="checkbox" autocomplete="off" class="input-with-feedback"
-                        data-fieldtype="Check" data-fieldname="terms" id="signup-terms" required>
-                    </span>
-                    <span class="label-area">
-                    {{ custom_signup_content }}
-                    </span>
-                </label>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    <div class="page-card-actions">
-        <button class="btn btn-sm btn-primary btn-block btn-signup"
-            type="submit">{{ _("Sign up") }}</button>
+		<!-- Terms and Privacy Policy Checkbox (Always visible) -->
+		<div class="form-group">
+			<div class="checkbox">
+				<label style="display: flex; align-items: flex-start; gap: 8px;">
+					<span class="input-area" style="margin-top: 2px;">
+						<input
+							type="checkbox"
+							autocomplete="off"
+							class="input-with-feedback"
+							data-fieldtype="Check"
+							data-fieldname="agree_policy"
+							id="signup-agree-policy"
+							required
+						/>
+					</span>
+					<span class="label-area" style="font-size: 13px; color: var(--text-muted);">
+						{{ _("Saya menyetujui") }}
+						<a href="/terms" target="_blank" class="blue" style="text-decoration: underline;">{{ _("Syarat dan Ketentuan") }}</a>
+						{{ _("dan") }}
+						<a href="/privacy" target="_blank" class="blue" style="text-decoration: underline;">{{ _("Kebijakan Privasi") }}</a>
+					</span>
+				</label>
+			</div>
+		</div>
+	</div>
+	<div class="page-card-actions">
+		<button
+			class="btn btn-sm btn-primary btn-block btn-signup"
+			type="submit"
+		>
+			{{ _("Sign up") }}
+		</button>
 
-        <p class="text-center sign-up-message">
-            <a href="#login" class="blue">{{ _("Have an account? Login") }}</a>
-        </p>
-    </div>
+		<p class="text-center sign-up-message">
+			<a href="#login" class="blue">{{ _("Have an account? Login") }}</a>
+		</p>
+	</div>
 </form>
 
 <script>
-    frappe.ready(function () {
-        $("#user_category").on("change", (e) => {
-            style_category(e);
-        });
+	frappe.ready(function () {
+		// Capture referral code from URL or localStorage
+		const urlParams = new URLSearchParams(window.location.search);
+		const refFromUrl = urlParams.get("ref");
+		if (refFromUrl) {
+			localStorage.setItem("lms_referral_code", refFromUrl);
+		}
 
-        $(".signup-form").on("submit", (e) => {
-            signup(e);
-        });
-    });
+		$("#user_category").on("change", (e) => {
+			style_category(e);
+		});
 
-    const style_category = (e) => {
-        let category_color = $(e.currentTarget).val() ? "var(--text-color)" : "var(--text-muted)";
-        $("#user_category").css("color", category_color);
-    }
+		$(".signup-form").on("submit", (e) => {
+			signup(e);
+		});
+	});
 
-    const signup = (e) => {
-        e.preventDefault();
-        const email = ($("#signup_email").val() || "").trim();
-        const full_name = frappe.utils.xss_sanitise(($("#signup_fullname").val() || "").trim());
+	const style_category = (e) => {
+		let category_color = $(e.currentTarget).val()
+			? "var(--text-color)"
+			: "var(--text-muted)";
+		$("#user_category").css("color", category_color);
+	};
 
-        if (!email || !validate_email(email) || !full_name) {
-            login.set_status('{{ _("Valid email and name required") }}', 'red');
-            return false;
-        }
+	const signup = (e) => {
+		e.preventDefault();
+		const email = ($("#signup_email").val() || "").trim();
+		const full_name = frappe.utils.xss_sanitise(
+			($("#signup_fullname").val() || "").trim()
+		);
 
-        frappe.call({
-            method: "lms.lms.user.sign_up",
-            args: {
-                "email": email,
-                "full_name": full_name,
-                "verify_terms": $("#signup-terms").prop("checked") ? 1 : 0,
-                "user_category": $("#user_category").length ?  $("#user_category").val() : ""
-            },
-            statusCode: login.login_handlers
-        })
-        return false;
-    }
+		// Get referral code from localStorage
+		const referred_by_code =
+			localStorage.getItem("lms_referral_code") || "";
+
+		if (!email || !validate_email(email) || !full_name) {
+			login.set_status('{{ _("Valid email and name required") }}', "red");
+			return false;
+		}
+
+		frappe.call({
+			method: "lms.lms.user.sign_up",
+			args: {
+				email: email,
+				full_name: full_name,
+				verify_terms: $("#signup-terms").prop("checked") ? 1 : 0,
+				user_category: $("#user_category").length
+					? $("#user_category").val()
+					: "",
+				referred_by_code: referred_by_code,
+			},
+			freeze: true,
+			freeze_message: "{{ _('Signing up...') }}",
+			callback: function (r) {
+				if (r && r.message) {
+					var status = r.message[0];
+					var responseData = r.message[1];
+
+					if (status === 0) {
+						// Error - show message
+						login.set_status(responseData, "red");
+					} else {
+						// Success - clear referral and redirect to OTP page
+						localStorage.removeItem("lms_referral_code");
+						if (responseData && responseData.email) {
+							window.location.href = "/verify-otp?email=" + encodeURIComponent(responseData.email);
+						} else {
+							// Fallback if no email in response
+							login.set_status("Please check your email for verification", "green");
+						}
+					}
+				}
+			},
+			error: function(r) {
+				login.set_status("{{ _('Sign up failed. Please try again.') }}", "red");
+			}
+		});
+		return false;
+	};
 </script>

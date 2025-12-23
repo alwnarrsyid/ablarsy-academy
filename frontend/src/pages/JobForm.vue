@@ -13,7 +13,7 @@
 				<div class="text-lg font-semibold mb-4 text-ink-gray-9">
 					{{ __('Job Details') }}
 				</div>
-				<div class="grid grid-cols-2 gap-5">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 					<div class="space-y-4">
 						<FormControl
 							v-model="job.job_title"
@@ -62,7 +62,7 @@
 				<div class="text-lg font-semibold mb-4 text-ink-gray-9">
 					{{ __('Company Details') }}
 				</div>
-				<div class="grid grid-cols-2 gap-5">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 					<div>
 						<FormControl
 							v-model="job.company_name"

@@ -10,9 +10,29 @@ const routes = [
 		component: () => import('@/pages/Home/Home.vue'),
 	},
 	{
+		path: '/developer/docs',
+		name: 'DeveloperDocs',
+		component: () => import('@/pages/DeveloperDocs.vue'),
+	},
+	{
+		path: '/terms',
+		name: 'TermsConditions',
+		component: () => import('@/pages/TermsConditions.vue'),
+	},
+	{
+		path: '/privacy',
+		name: 'PrivacyPolicy',
+		component: () => import('@/pages/PrivacyPolicy.vue'),
+	},
+	{
 		path: '/courses',
 		name: 'Courses',
 		component: () => import('@/pages/Courses.vue'),
+	},
+	{
+		path: '/search',
+		name: 'Search',
+		component: () => import('@/pages/Search.vue'),
 	},
 	{
 		path: '/courses/:courseName',
@@ -98,6 +118,11 @@ const routes = [
 				path: 'schedule',
 				component: () =>
 					import('@/pages/ProfileEvaluationSchedule.vue'),
+			},
+			{
+				name: 'ProfileReferral',
+				path: 'referral',
+				component: () => import('@/pages/ProfileReferral.vue'),
 			},
 		],
 	},

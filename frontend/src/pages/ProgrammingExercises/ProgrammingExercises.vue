@@ -33,25 +33,10 @@
 			</Button>
 		</div>
 	</header>
-	<div class="md:w-4/5 md:mx-auto p-5">
-		<div class="flex items-center justify-between mb-5">
-			<div v-if="exerciseCount" class="text-lg font-semibold text-ink-gray-9">
+	<div class="p-4 md:p-5 pb-10">
+		<div class="mb-5">
+			<div v-if="exerciseCount" class="text-lg text-ink-gray-9 font-semibold mb-4">
 				{{ __('{0} Exercises').format(exerciseCount) }}
-			</div>
-			<div
-				v-if="exercises.data?.length || exerciseCount > 0"
-				class="grid grid-cols-2 gap-5"
-			>
-				<!-- <FormControl
-                    v-model="titleFilter"
-                    :placeholder="__('Search by title')"
-                />
-                <FormControl
-                    v-model="typeFilter"
-                    type="select"
-                    :options="assignmentTypes"
-                    :placeholder="__('Type')"
-                /> -->
 			</div>
 		</div>
 

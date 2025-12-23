@@ -9,11 +9,21 @@
 		>
 			<UserDropdown :isCollapsed="sidebarStore.isSidebarCollapsed" />
 			<div class="flex flex-col" v-if="sidebarSettings.data">
-				<div v-for="link in sidebarLinks" class="mx-2 my-0.5">
-					<SidebarLink
-						:link="link"
-						:isCollapsed="sidebarStore.isSidebarCollapsed"
-					/>
+				<div v-for="link in sidebarLinks" class="mx-2 my-2.5">
+					<div
+						v-if="!link.hideLabel"
+						class="mb-2 mt-3 flex cursor-pointer gap-1.5 px-1 text-base font-medium text-ink-gray-5 transition-all duration-300 ease-in-out"
+					>
+						<span>{{ __(link.label) }}</span>
+					</div>
+					<nav class="space-y-1">
+						<div v-for="item in link.items">
+							<SidebarLink
+								:link="item"
+								:isCollapsed="sidebarStore.isSidebarCollapsed"
+							/>
+						</div>
+					</nav>
 				</div>
 			</div>
 			<div
@@ -218,6 +228,7 @@ import {
 	BookText,
 	Zap,
 	Check,
+	Code2,
 } from 'lucide-vue-next'
 import {
 	TrialBanner,
@@ -303,9 +314,25 @@ const unreadNotifications = createResource({
 	auto: user ? true : false,
 })
 
+// Helper function to find a group by label
+const findGroup = (label) => {
+	return sidebarLinks.value?.find(group => group.label === label)
+}
+
+// Helper function to check if item exists in any group
+const itemExistsInAnyGroup = (itemLabel) => {
+	return sidebarLinks.value?.some(group =>
+		group.items?.some(item => item.label === itemLabel)
+	)
+}
+
 const addNotifications = () => {
-	if (user) {
-		sidebarLinks.value.push({
+	if (!user) return
+	if (itemExistsInAnyGroup('Notifications')) return
+
+	const generalGroup = findGroup('General')
+	if (generalGroup) {
+		generalGroup.items.push({
 			label: 'Notifications',
 			icon: 'Bell',
 			to: 'Notifications',
@@ -317,96 +344,107 @@ const addNotifications = () => {
 
 const addQuizzes = () => {
 	if (!isInstructor.value && !isModerator.value) return
+	if (itemExistsInAnyGroup('Quizzes')) return
 
-	const quizzesLinkExists = sidebarLinks.value.some(
-		(link) => link.label === 'Quizzes'
-	)
-	if (quizzesLinkExists) return
-
-	sidebarLinks.value.splice(4, 0, {
-		label: 'Quizzes',
-		icon: 'CircleHelp',
-		to: 'Quizzes',
-		activeFor: ['Quizzes', 'QuizForm', 'QuizSubmissionList', 'QuizSubmission'],
-	})
+	const assessmentsGroup = findGroup('Assessments')
+	if (assessmentsGroup) {
+		assessmentsGroup.items.push({
+			label: 'Quizzes',
+			icon: 'CircleHelp',
+			to: 'Quizzes',
+			activeFor: ['Quizzes', 'QuizForm', 'QuizSubmissionList', 'QuizSubmission'],
+		})
+	}
 }
 
 const addAssignments = () => {
 	if (!isInstructor.value && !isModerator.value) return
+	if (itemExistsInAnyGroup('Assignments')) return
 
-	const assignmentsLinkExists = sidebarLinks.value.some(
-		(link) => link.label === 'Assignments'
-	)
-	if (assignmentsLinkExists) return
-
-	sidebarLinks.value.splice(5, 0, {
-		label: 'Assignments',
-		icon: 'Pencil',
-		to: 'Assignments',
-		activeFor: [
-			'Assignments',
-			'AssignmentForm',
-			'AssignmentSubmissionList',
-			'AssignmentSubmission',
-		],
-	})
+	const assessmentsGroup = findGroup('Assessments')
+	if (assessmentsGroup) {
+		assessmentsGroup.items.push({
+			label: 'Assignments',
+			icon: 'Pencil',
+			to: 'Assignments',
+			activeFor: [
+				'Assignments',
+				'AssignmentForm',
+				'AssignmentSubmissionList',
+				'AssignmentSubmission',
+			],
+		})
+	}
 }
 
 const addProgrammingExercises = () => {
 	if (!isInstructor.value && !isModerator.value) return
-	const programmingExercisesLinkExists = sidebarLinks.value.some(
-		(link) => link.label === 'Programming Exercises'
-	)
-	if (programmingExercisesLinkExists) return
+	if (itemExistsInAnyGroup('Programming Exercises')) return
 
-	sidebarLinks.value.splice(3, 0, {
-		label: 'Programming Exercises',
-		icon: 'Code',
-		to: 'ProgrammingExercises',
-		activeFor: [
-			'ProgrammingExercises',
-			'ProgrammingExerciseForm',
-			'ProgrammingExerciseSubmissions',
-			'ProgrammingExerciseSubmission',
-		],
-	})
+	const assessmentsGroup = findGroup('Assessments')
+	if (assessmentsGroup) {
+		assessmentsGroup.items.push({
+			label: 'Programming Exercises',
+			icon: 'Code',
+			to: 'ProgrammingExercises',
+			activeFor: [
+				'ProgrammingExercises',
+				'ProgrammingExerciseForm',
+				'ProgrammingExerciseSubmissions',
+				'ProgrammingExerciseSubmission',
+			],
+		})
+	}
 }
 
 const addPrograms = async () => {
-	const programsLinkExists = sidebarLinks.value.some(
-		(link) => link.label === 'Programs'
-	)
-	if (programsLinkExists) return
+	if (itemExistsInAnyGroup('Programs')) return
 
 	let canAddProgram = await checkIfCanAddProgram()
 	if (!canAddProgram) return
-	let activeFor = ['Programs', 'ProgramDetail']
-	let index = 2
 
-	sidebarLinks.value.splice(index, 0, {
-		label: 'Programs',
-		icon: 'Route',
-		to: 'Programs',
-		activeFor: activeFor,
-	})
+	const learningGroup = findGroup('Learning')
+	if (learningGroup) {
+		// Insert after Courses (index 0)
+		learningGroup.items.splice(1, 0, {
+			label: 'Programs',
+			icon: 'Route',
+			to: 'Programs',
+			activeFor: ['Programs', 'ProgramDetail'],
+		})
+	}
+}
+
+const addDeveloperDocs = () => {
+	if (!userResource.data?.is_admin && !userResource.data?.is_system_manager) return
+	if (itemExistsInAnyGroup('Developer Docs')) return
+
+	const learningGroup = findGroup('Learning')
+	if (learningGroup) {
+		learningGroup.items.push({
+			label: 'Developer Docs',
+			icon: 'Code2',
+			to: 'DeveloperDocs',
+			activeFor: ['DeveloperDocs'],
+		})
+	}
 }
 
 const addContactUsDetails = () => {
 	if (!settings?.data?.contact_us_email && !settings?.data?.contact_us_url)
 		return
+	if (itemExistsInAnyGroup('Contact Us')) return
 
-	const contactUsLinkExists = sidebarLinks.value.some(
-		(link) => link.label === 'Contact Us'
-	)
-	if (contactUsLinkExists) return
-
-	sidebarLinks.value.push({
-		label: 'Contact Us',
-		icon: settings.data?.contact_us_url ? 'Headset' : 'Mail',
-		to: settings.data?.contact_us_url
-			? settings.data?.contact_us_url
-			: settings.data?.contact_us_email,
-	})
+	const learningGroup = findGroup('Learning')
+	if (learningGroup) {
+		learningGroup.items.push({
+			label: 'Contact Us',
+			icon: settings.data?.contact_us_url ? 'Headset' : 'Mail',
+			to: settings.data?.contact_us_url
+				? settings.data?.contact_us_url
+				: settings.data?.contact_us_email,
+		})
+	}
 }
 
 const checkIfCanAddProgram = async () => {
@@ -418,16 +456,18 @@ const checkIfCanAddProgram = async () => {
 }
 
 const addHome = () => {
-	const homeLinkExists = sidebarLinks.value.some(
-		(link) => link.label === 'Home'
-	)
-	if (homeLinkExists) return
-	sidebarLinks.value.unshift({
-		label: 'Home',
-		icon: 'Home',
-		to: 'Home',
-		activeFor: ['Home'],
-	})
+	if (itemExistsInAnyGroup('Home')) return
+
+	const generalGroup = findGroup('General')
+	if (generalGroup) {
+		// Insert at beginning of General group
+		generalGroup.items.unshift({
+			label: 'Home',
+			icon: 'Home',
+			to: 'Home',
+			activeFor: ['Home'],
+		})
+	}
 }
 
 const openPageModal = (link) => {
@@ -679,11 +719,11 @@ watch(userResource, () => {
 	if (userResource.data) {
 		isModerator.value = userResource.data.is_moderator
 		isInstructor.value = userResource.data.is_instructor
-		addHome()
 		addPrograms()
 		addProgrammingExercises()
 		addQuizzes()
 		addAssignments()
+		addDeveloperDocs()
 		setUpOnboarding()
 	}
 })

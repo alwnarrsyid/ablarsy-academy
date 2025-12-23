@@ -28,6 +28,11 @@ const { userResource } = usersStore()
 const { settings } = useSettings()
 
 router.beforeEach((to, from, next) => {
+	// Capture referral code from URL and store in localStorage
+	if (to.query.ref) {
+		localStorage.setItem('lms_referral_code', to.query.ref)
+	}
+
 	if (to.query.fromLesson || to.path === '/persona') {
 		noSidebar.value = true
 	} else {
