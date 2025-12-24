@@ -173,6 +173,11 @@
 									v-model="course.disable_self_learning"
 									:label="__('Disable Self Enrollment')"
 								/>
+								<FormControl
+									type="checkbox"
+									v-model="course.require_sequential_learning"
+									:label="__('Require Sequential Learning')"
+								/>
 							</div>
 						</div>
 					</div>
@@ -395,6 +400,7 @@ const course = reactive({
 	featured: false,
 	upcoming: false,
 	disable_self_learning: false,
+	require_sequential_learning: false,
 	enable_certification: false,
 	paid_course: false,
 	paid_certificate: false,
@@ -511,6 +517,7 @@ const courseResource = createResource({
 			'published',
 			'upcoming',
 			'disable_self_learning',
+			'require_sequential_learning',
 			'paid_course',
 			'featured',
 			'enable_certification',

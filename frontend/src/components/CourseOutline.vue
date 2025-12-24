@@ -113,7 +113,13 @@
 														v-else-if="lesson.icon === 'icon-list'"
 														class="h-4 w-4 text-ink-gray-9 stroke-1 mr-2"
 													/>
-													{{ lesson.title }}
+													<span :class="{ 'text-ink-gray-5': lesson.is_locked }">
+														{{ lesson.title }}
+													</span>
+													<LockKeyhole
+														v-if="lesson.is_locked"
+														class="h-3.5 w-3.5 text-ink-gray-5 ml-2"
+													/>
 													<Trash2
 														v-if="allowEdit"
 														@click.prevent="
@@ -173,6 +179,7 @@ import {
 	FileText,
 	FilePenLine,
 	HelpCircle,
+	LockKeyhole,
 	MonitorPlay,
 	Trash2,
 } from 'lucide-vue-next'

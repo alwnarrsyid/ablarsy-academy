@@ -82,9 +82,13 @@ const routes = [
 		props: true,
 	},
 	{
+		path: '/leaderboard',
+		name: 'Leaderboard',
+		component: () => import('@/pages/Leaderboard.vue'),
+	},
+	{
 		path: '/statistics',
-		name: 'Statistics',
-		component: () => import('@/pages/Statistics.vue'),
+		redirect: '/leaderboard',
 	},
 	{
 		path: '/user/:username',

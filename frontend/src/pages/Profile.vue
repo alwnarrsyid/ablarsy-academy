@@ -68,6 +68,9 @@
 					<div class="mt-2 text-base text-ink-gray-7">
 						{{ profile.data.headline }}
 					</div>
+					<div v-if="isSessionUser()" class="mt-2">
+						<ProfileRankBadge :user="profile.data?.name" />
+					</div>
 				</div>
 				<Button
 					v-if="isSessionUser() && !readOnlyMode"
@@ -115,6 +118,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import NoPermission from '@/components/NoPermission.vue'
 import EditProfile from '@/components/Modals/EditProfile.vue'
 import EditCoverImage from '@/components/Modals/EditCoverImage.vue'
+import ProfileRankBadge from '@/components/ProfileRankBadge.vue'
 
 const { user, brand } = sessionStore()
 const $user = inject('$user')

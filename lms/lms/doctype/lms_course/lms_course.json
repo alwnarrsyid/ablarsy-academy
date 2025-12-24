@@ -31,6 +31,7 @@
   "upcoming",
   "featured",
   "disable_self_learning",
+  "require_sequential_learning",
   "section_break_18",
   "short_introduction",
   "column_break_viqw",
@@ -97,7 +98,14 @@
    "default": "0",
    "fieldname": "disable_self_learning",
    "fieldtype": "Check",
-   "label": "Disable Self Learning"
+   "label": "Disable Self Enrollment"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, students must complete lessons in order. They cannot skip to later lessons.",
+   "fieldname": "require_sequential_learning",
+   "fieldtype": "Check",
+   "label": "Require Sequential Learning"
   },
   {
    "fieldname": "image",

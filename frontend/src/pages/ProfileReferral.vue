@@ -29,9 +29,21 @@
 
 		<!-- Earnings Summary -->
 		<div class="mt-7 mb-10">
-			<h2 class="mb-3 text-lg font-semibold text-ink-gray-9">
-				{{ __('Earnings Summary') }}
-			</h2>
+			<div class="flex items-center justify-between mb-3">
+				<h2 class="text-lg font-semibold text-ink-gray-9">
+					{{ __('Earnings Summary') }}
+				</h2>
+				<Button
+					v-if="stats.pending_payout > 0 && hasPayoutMethod"
+					variant="solid"
+					@click="showWithdrawDialog = true"
+				>
+					<template #prefix>
+						<Banknote class="w-4 h-4" />
+					</template>
+					{{ __('Request Withdrawal') }}
+				</Button>
+			</div>
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 				<div class="bg-surface-gray-2 rounded-lg p-4">
 					<div class="text-2xl font-semibold text-ink-gray-9">
@@ -66,7 +78,103 @@
 					</div>
 				</div>
 			</div>
+			<!-- No payout method warning -->
+			<div v-if="stats.pending_payout > 0 && !hasPayoutMethod" class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+				<p class="text-sm text-yellow-800">
+					<AlertCircle class="w-4 h-4 inline-block mr-1" />
+					{{ __('Please set up your payout method below before requesting a withdrawal.') }}
+				</p>
+			</div>
 		</div>
+
+		<!-- Withdraw Confirmation Dialog -->
+		<Dialog v-model="showWithdrawDialog" :options="{ title: __('Request Withdrawal'), size: 'md' }">
+			<template #body-content>
+				<div class="space-y-4">
+					<!-- Amount -->
+					<div class="bg-surface-gray-2 rounded-lg p-4 text-center">
+						<div class="text-sm text-ink-gray-5 mb-1">{{ __('Withdrawal Amount') }}</div>
+						<div class="text-3xl font-bold text-ink-gray-9">
+							{{ formatCurrency(stats.pending_payout) }}
+						</div>
+					</div>
+
+					<!-- Payout Details -->
+					<div class="border border-outline-gray-2 rounded-lg p-4 space-y-3">
+						<div class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Payout Method') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ payoutForm.payout_method }}</span>
+						</div>
+						<div v-if="isEWallet" class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Phone Number') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ payoutForm.payout_phone }}</span>
+						</div>
+						<div v-if="isBankTransfer" class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Bank') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ payoutForm.payout_bank }}</span>
+						</div>
+						<div v-if="isBankTransfer" class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Account Number') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ payoutForm.payout_account_number }}</span>
+						</div>
+						<div v-if="isBankTransfer" class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Account Name') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ payoutForm.payout_account_name }}</span>
+						</div>
+					</div>
+
+					<!-- User Info -->
+					<div class="border border-outline-gray-2 rounded-lg p-4 space-y-3">
+						<div class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Name') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ profile.data?.full_name }}</span>
+						</div>
+						<div class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Email') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ profile.data?.name }}</span>
+						</div>
+						<div class="flex justify-between text-sm">
+							<span class="text-ink-gray-5">{{ __('Referral Code') }}</span>
+							<span class="text-ink-gray-9 font-medium">{{ stats.referral_code }}</span>
+						</div>
+					</div>
+
+					<!-- Note -->
+					<div class="text-xs text-ink-gray-5 text-center">
+						{{ __('Withdrawal requests are processed on the 25th of each month. Requests made after the 20th will be processed the following month.') }}
+					</div>
+
+					<!-- Error Message -->
+					<div v-if="withdrawError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+						<p class="text-sm text-red-700">{{ withdrawError }}</p>
+					</div>
+
+					<!-- Success Message -->
+					<div v-if="withdrawSuccess" class="p-3 bg-green-50 border border-green-200 rounded-lg">
+						<p class="text-sm text-green-700">
+							<CheckCircle class="w-4 h-4 inline-block mr-1" />
+							{{ __('Withdrawal request submitted successfully!') }}
+						</p>
+					</div>
+				</div>
+			</template>
+			<template #actions>
+				<Button variant="ghost" @click="showWithdrawDialog = false" :disabled="withdrawLoading">
+					{{ __('Cancel') }}
+				</Button>
+				<Button
+					variant="solid"
+					@click="submitWithdrawRequest"
+					:loading="withdrawLoading"
+					:disabled="withdrawSuccess"
+				>
+					<template #prefix>
+						<Send class="w-4 h-4" />
+					</template>
+					{{ __('Submit Request') }}
+				</Button>
+			</template>
+		</Dialog>
 
 		<!-- Payout Method Section -->
 		<div class="mt-7 mb-10">
@@ -281,13 +389,19 @@
 
 <script setup>
 import { ref, computed, inject, reactive } from 'vue'
-import { createResource, Button, Badge } from 'frappe-ui'
-import { Copy, Wallet, Save, Smartphone, Library, Pencil } from 'lucide-vue-next'
+import { createResource, Button, Badge, Dialog } from 'frappe-ui'
+import { Copy, Wallet, Save, Smartphone, Library, Pencil, Banknote, AlertCircle, Send, CheckCircle } from 'lucide-vue-next'
 
 const dayjs = inject('$dayjs')
 const copied = ref(false)
 const payoutSaved = ref(false)
 const isEditing = ref(false)
+
+// Withdraw dialog state
+const showWithdrawDialog = ref(false)
+const withdrawLoading = ref(false)
+const withdrawError = ref('')
+const withdrawSuccess = ref(false)
 
 const props = defineProps({
 	profile: {
@@ -409,6 +523,84 @@ const formatCurrency = (amount) => {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 0,
 	}).format(amount)
+}
+
+// Submit withdrawal request to webhook
+const submitWithdrawRequest = async () => {
+	withdrawLoading.value = true
+	withdrawError.value = ''
+	withdrawSuccess.value = false
+
+	try {
+		// Prepare withdrawal data
+		const withdrawalData = {
+			// User info
+			user_email: props.profile.data?.name,
+			user_name: props.profile.data?.full_name,
+			user_id: props.profile.data?.name,
+
+			// Referral info
+			referral_code: stats.value.referral_code,
+			total_referrals: stats.value.total_referrals || 0,
+			total_earnings: stats.value.total_earnings || 0,
+
+			// Withdrawal details
+			withdrawal_amount: stats.value.pending_payout || 0,
+			request_date: new Date().toISOString(),
+
+			// Payout method - only send relevant fields
+			payout_method: payoutForm.payout_method,
+			// For E-Wallet (GoPay, Dana, OVO, ShopeePay) - send phone
+			...(isEWallet.value && {
+				payout_phone: payoutForm.payout_phone
+			}),
+			// For Bank Transfer - send bank details
+			...(isBankTransfer.value && {
+				payout_bank: payoutForm.payout_bank,
+				payout_account_number: payoutForm.payout_account_number,
+				payout_account_name: payoutForm.payout_account_name
+			}),
+
+			// Commission details (unpaid ones)
+			pending_commissions: commissions.data
+				?.filter(c => c.payout_status === 'Unpaid')
+				?.map(c => ({
+					id: c.name,
+					student: c.referred_student,
+					amount: c.commission_amount,
+					date: c.creation
+				})) || []
+		}
+
+		// Send to webhook
+		const response = await fetch('https://n8n.srv799171.hstgr.cloud/webhook/wd-commision', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(withdrawalData)
+		})
+
+		if (!response.ok) {
+			throw new Error('Failed to submit withdrawal request')
+		}
+
+		withdrawSuccess.value = true
+
+		// Refresh data after 2 seconds and close dialog
+		setTimeout(() => {
+			showWithdrawDialog.value = false
+			withdrawSuccess.value = false
+			referralStats.reload()
+			commissions.reload()
+		}, 2000)
+
+	} catch (err) {
+		console.error('Withdrawal request failed:', err)
+		withdrawError.value = err.message || 'Failed to submit withdrawal request. Please try again.'
+	} finally {
+		withdrawLoading.value = false
+	}
 }
 </script>
 

@@ -120,31 +120,35 @@ def get_chapters(course):
 	return chapters
 
 
-def get_lessons(course, chapter=None, get_details=True, progress=False):
+def get_lessons(course, chapter=None, get_details=True, progress=False, require_sequential=False):
 	"""If chapter is passed, returns lessons of only that chapter.
 	Else returns lessons of all chapters of the course"""
 	lessons = []
 	lesson_count = 0
 	if chapter:
 		if get_details:
-			return get_lesson_details(chapter, progress=progress)
+			return get_lesson_details(chapter, progress=progress, require_sequential=require_sequential)
 		else:
 			return frappe.db.count("Lesson Reference", {"parent": chapter.name})
 
 	for chapter in get_chapters(course):
 		if get_details:
-			lessons += get_lesson_details(chapter, progress=progress)
+			lessons += get_lesson_details(chapter, progress=progress, require_sequential=require_sequential)
 		else:
 			lesson_count += frappe.db.count("Lesson Reference", {"parent": chapter.name})
 
 	return lessons if get_details else lesson_count
 
 
-def get_lesson_details(chapter, progress=False):
+def get_lesson_details(chapter, progress=False, require_sequential=False):
 	lessons = []
 	lesson_list = frappe.get_all(
 		"Lesson Reference", {"parent": chapter.name}, ["lesson", "idx"], order_by="idx"
 	)
+
+	# Track if previous lesson is complete for sequential learning
+	previous_lesson_complete = True
+
 	for row in lesson_list:
 		lesson_details = frappe.db.get_value(
 			"Course Lesson",
@@ -170,6 +174,22 @@ def get_lesson_details(chapter, progress=False):
 
 		if progress:
 			lesson_details.is_complete = get_progress(lesson_details.course, lesson_details.name)
+		else:
+			lesson_details.is_complete = False
+
+		# Check if lesson should be locked (sequential learning)
+		if require_sequential and progress:
+			# First lesson of first chapter is never locked
+			if chapter.idx == 1 and row.idx == 1:
+				lesson_details.is_locked = False
+			else:
+				# Lock if previous lesson is not complete
+				lesson_details.is_locked = not previous_lesson_complete
+
+			# Update for next iteration
+			previous_lesson_complete = lesson_details.is_complete
+		else:
+			lesson_details.is_locked = False
 
 		lessons.append(lesson_details)
 	return lessons
@@ -1223,7 +1243,15 @@ def get_categorized_courses(courses):
 def get_course_outline(course, progress=False):
 	"""Returns the course outline."""
 	outline = []
+
+	# Check if course requires sequential learning
+	require_sequential = frappe.db.get_value("LMS Course", course, "require_sequential_learning")
+
 	chapters = frappe.get_all("Chapter Reference", {"parent": course}, ["chapter", "idx"], order_by="idx")
+
+	# For sequential learning across chapters, we need to track completion
+	all_previous_complete = True
+
 	for chapter in chapters:
 		chapter_details = frappe.db.get_value(
 			"Course Chapter",
@@ -1232,7 +1260,21 @@ def get_course_outline(course, progress=False):
 			as_dict=True,
 		)
 		chapter_details["idx"] = chapter.idx
-		chapter_details.lessons = get_lessons(course, chapter_details, progress=progress)
+		chapter_details.lessons = get_lessons(
+			course, chapter_details, progress=progress, require_sequential=require_sequential
+		)
+
+		# For cross-chapter sequential learning: lock all lessons in this chapter if previous chapter not complete
+		if require_sequential and progress and chapter.idx > 1:
+			# Check if any lesson from previous chapters is incomplete
+			prev_chapter_complete = all(
+				lesson.get("is_complete", False)
+				for prev_chap in outline
+				for lesson in prev_chap.get("lessons", [])
+			)
+			if not prev_chapter_complete:
+				for lesson in chapter_details.lessons:
+					lesson["is_locked"] = True
 
 		if chapter_details.is_scorm_package:
 			chapter_details.scorm_package = frappe.db.get_value(
@@ -1244,6 +1286,43 @@ def get_course_outline(course, progress=False):
 
 		outline.append(chapter_details)
 	return outline
+
+
+def check_lesson_locked(course, chapter_idx, lesson_idx):
+	"""Check if a lesson should be locked based on sequential learning.
+	Returns True if any previous lesson is not complete."""
+
+	# First lesson is never locked
+	if chapter_idx == 1 and lesson_idx == 1:
+		return False
+
+	# Get all chapters
+	chapters = frappe.get_all(
+		"Chapter Reference", {"parent": course}, ["chapter", "idx"], order_by="idx"
+	)
+
+	for chapter in chapters:
+		if chapter.idx > chapter_idx:
+			break
+
+		lessons = frappe.get_all(
+			"Lesson Reference", {"parent": chapter.chapter}, ["lesson", "idx"], order_by="idx"
+		)
+
+		for lesson_ref in lessons:
+			# Skip lessons that come after the target lesson in the target chapter
+			if chapter.idx == chapter_idx and lesson_ref.idx >= lesson_idx:
+				break
+
+			# Check if this lesson is complete
+			lesson_name = lesson_ref.lesson
+			lesson_course = frappe.db.get_value("Course Lesson", lesson_name, "course")
+			is_complete = get_progress(lesson_course, lesson_name)
+
+			if not is_complete:
+				return True  # Previous lesson not complete, so current lesson is locked
+
+	return False
 
 
 @frappe.whitelist(allow_guest=True)
@@ -1271,7 +1350,7 @@ def get_lesson(course, chapter, lesson):
 	course_info = frappe.db.get_value(
 		"LMS Course",
 		course,
-		["title", "paid_certificate", "disable_self_learning", "paid_course", "course_price", "currency"],
+		["title", "paid_certificate", "disable_self_learning", "paid_course", "course_price", "currency", "require_sequential_learning"],
 		as_dict=1,
 	)
 
@@ -1290,6 +1369,18 @@ def get_lesson(course, chapter, lesson):
 			"course_price": course_info.course_price,
 			"currency": course_info.currency,
 		}
+
+	# Check if lesson is locked due to sequential learning
+	if course_info.require_sequential_learning and membership:
+		is_locked = check_lesson_locked(course, int(chapter), int(lesson))
+		if is_locked:
+			return {
+				"is_locked_sequential": True,
+				"title": lesson_details.title,
+				"course_title": course_info.title,
+				"chapter_number": chapter,
+				"lesson_number": lesson,
+			}
 
 	lesson_details = frappe.db.get_value(
 		"Course Lesson",

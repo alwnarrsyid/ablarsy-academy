@@ -69,7 +69,7 @@
 			<div v-if="lesson.data.no_preview" class="border-r">
 				<div class="shadow rounded-md w-3/4 mt-10 mx-auto text-center p-4">
 					<div class="flex items-center justify-center mt-4 space-x-2">
-						<LockKeyholeIcon class="size-4 stroke-2 text-ink-gray-5" />
+						<LockKeyhole class="size-4 stroke-2 text-ink-gray-5" />
 						<div class="text-lg font-semibold text-ink-gray-7">
 							{{ __('This lesson is locked') }}
 						</div>
@@ -101,6 +101,34 @@
 							<LogIn class="w-4 h-4 stroke-1" />
 						</template>
 						{{ __('Login') }}
+					</Button>
+				</div>
+			</div>
+			<!-- Sequential Learning Locked State -->
+			<div v-else-if="lesson.data.is_locked_sequential" class="border-r">
+				<div class="shadow rounded-md w-3/4 mt-10 mx-auto text-center p-4">
+					<div class="flex items-center justify-center mt-4 space-x-2">
+						<LockKeyhole class="size-5 stroke-2 text-amber-500" />
+						<div class="text-lg font-semibold text-ink-gray-7">
+							{{ __('Complete Previous Lesson First') }}
+						</div>
+					</div>
+					<div class="mt-2 mb-4 text-ink-gray-7">
+						{{
+							__(
+								'This course requires sequential learning. Please complete the previous lesson before accessing this one.'
+							)
+						}}
+					</div>
+					<Button
+						v-if="lesson.data.chapter_number && lesson.data.lesson_number"
+						@click="goToPreviousLesson()"
+						variant="solid"
+					>
+						<template #prefix>
+							<ChevronLeft class="w-4 h-4 stroke-1" />
+						</template>
+						{{ __('Go to Previous Lesson') }}
 					</Button>
 				</div>
 			</div>
@@ -356,7 +384,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
 	ChevronLeft,
 	ChevronRight,
-	LockKeyholeIcon,
+	LockKeyhole,
 	LogIn,
 	Focus,
 	Info,
@@ -831,6 +859,40 @@ const canSeeStats = () => {
 
 const showVideoStats = () => {
 	showStatsDialog.value = true
+}
+
+const goToPreviousLesson = () => {
+	// Navigate to the previous lesson
+	let chapterNum = parseInt(lesson.data.chapter_number)
+	let lessonNum = parseInt(lesson.data.lesson_number)
+
+	if (lessonNum > 1) {
+		// Go to previous lesson in same chapter
+		router.push({
+			name: 'Lesson',
+			params: {
+				courseName: props.courseName,
+				chapterNumber: chapterNum,
+				lessonNumber: lessonNum - 1,
+			},
+		})
+	} else if (chapterNum > 1) {
+		// Go to last lesson of previous chapter (approximate - go to chapter start)
+		router.push({
+			name: 'Lesson',
+			params: {
+				courseName: props.courseName,
+				chapterNumber: chapterNum - 1,
+				lessonNumber: 1,
+			},
+		})
+	} else {
+		// Go to course detail
+		router.push({
+			name: 'CourseDetail',
+			params: { courseName: props.courseName },
+		})
+	}
 }
 
 const canGoZen = () => {

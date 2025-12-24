@@ -203,7 +203,7 @@ def validate_course_enrollment_eligibility(course, member):
 	if course_details.disable_self_learning:
 		frappe.throw(
 			_(
-				"You cannot enroll in this course as self-learning is disabled. Please contact the Administrator."
+				"This course does not allow self-enrollment. Please contact the Administrator to enroll."
 			)
 		)
 

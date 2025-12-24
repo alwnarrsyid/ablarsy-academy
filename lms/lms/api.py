@@ -3581,3 +3581,481 @@ def api_get_revenue_stats(date_from=None, date_to=None, group_by="day"):
 	""", as_dict=True)
 
 	return {"data": revenue_data}
+
+
+# -----------------------------------------------------------------------------
+# LEADERBOARD APIs
+# -----------------------------------------------------------------------------
+
+# Scoring weights for leaderboard calculation
+LEADERBOARD_SCORE_WEIGHTS = {
+	'lesson_completed': 50,       # Per lesson completed (actual data)
+	'quiz_completed': 100,        # Per quiz taken
+	'quiz_perfect_score': 50,     # Bonus for 100% score
+	'live_class_attended': 150,   # Per live class attendance
+	'certificate_earned': 200,    # Per certificate
+	'course_review': 30,          # Per course review
+	'quiz_discussion': 10,        # Per quiz discussion
+	'referral_signup': 25,        # Per successful referral signup
+	'referral_purchase': 150,     # Per referral that made purchase
+}
+
+# Season base date: First season starts on 21st December 2025
+SEASON_BASE_DATE = "2025-12-21"
+SEASON_DURATION_MONTHS = 3
+
+
+def get_current_season():
+	"""
+	Calculate current season based on 21-20 date pattern every 3 months.
+	Season 1: Dec 21, 2025 - Mar 20, 2026
+	Season 2: Mar 21, 2026 - Jun 20, 2026
+	etc.
+
+	Approach: Define all season boundaries explicitly to avoid edge case bugs.
+	"""
+	from datetime import datetime
+	from frappe.utils import getdate, nowdate
+	from dateutil.relativedelta import relativedelta
+
+	today = getdate(nowdate())
+
+	# Season 1 starts on Dec 21, 2025
+	season_1_start = datetime(2025, 12, 21).date()
+
+	# If before season 1, return pre-season info
+	if today < season_1_start:
+		end_date = datetime(2026, 3, 20).date()
+		return {
+			"season": 1,
+			"start_date": season_1_start,
+			"end_date": end_date,
+			"days_remaining": (season_1_start - today).days
+		}
+
+	# Iterate through seasons to find current one
+	current_season = 1
+	current_start = season_1_start
+
+	# Safety limit: max 100 seasons (25 years)
+	for _ in range(100):
+		# Calculate end date (3 months later, on the 20th)
+		next_start = current_start + relativedelta(months=3)
+		current_end = next_start - relativedelta(days=1)
+
+		if today <= current_end:
+			# Found the current season
+			return {
+				"season": current_season,
+				"start_date": current_start,
+				"end_date": current_end,
+				"days_remaining": (current_end - today).days
+			}
+
+		# Move to next season
+		current_season += 1
+		current_start = next_start
+
+	# Fallback (should never reach here)
+	end_date = datetime(2026, 3, 20).date()
+	return {
+		"season": 1,
+		"start_date": season_1_start,
+		"end_date": end_date,
+		"days_remaining": 0
+	}
+
+
+def calculate_user_score(user, period=None, category="student"):
+	"""
+	Calculate leaderboard score for a user.
+	Returns dict with total_score and breakdown.
+	All calculations use ACTUAL data, not estimates.
+	"""
+	from datetime import datetime, timedelta
+	from frappe.utils import getdate, nowdate
+
+	# Period filter
+	date_filter = {}
+	if period == "weekly":
+		start_date = getdate(nowdate()) - timedelta(days=7)
+		date_filter = {"creation": (">=", start_date)}
+	elif period == "monthly":
+		start_date = getdate(nowdate()).replace(day=1)
+		date_filter = {"creation": (">=", start_date)}
+	elif period == "season":
+		season_info = get_current_season()
+		start_date = season_info["start_date"]
+		date_filter = {"creation": (">=", start_date)}
+	# all = no date filter
+
+	score_breakdown = {
+		"learning": 0,
+		"quizzes": 0,
+		"live_class": 0,
+		"certificates": 0,
+		"referrals": 0,
+		"engagement": 0
+	}
+
+	# === LEARNING SCORE: Count actual completed lessons ===
+	# Use LMS Course Progress to count actually completed lessons
+	lesson_filters = {"member": user, "status": "Complete"}
+	if date_filter:
+		lesson_filters.update(date_filter)
+
+	lessons_completed = frappe.db.count("LMS Course Progress", filters=lesson_filters)
+	score_breakdown["learning"] = lessons_completed * LEADERBOARD_SCORE_WEIGHTS['lesson_completed']
+
+	# === QUIZ SCORE ===
+	quiz_filters = {"member": user}
+	if date_filter:
+		quiz_filters.update(date_filter)
+
+	quiz_submissions = frappe.get_all(
+		"LMS Quiz Submission",
+		filters=quiz_filters,
+		fields=["score", "score_out_of"]
+	)
+
+	perfect_scores = 0
+	for quiz in quiz_submissions:
+		score_breakdown["quizzes"] += LEADERBOARD_SCORE_WEIGHTS['quiz_completed']
+		if quiz.score and quiz.score_out_of and quiz.score >= quiz.score_out_of:
+			perfect_scores += 1
+			score_breakdown["quizzes"] += LEADERBOARD_SCORE_WEIGHTS['quiz_perfect_score']
+
+	# === LIVE CLASS SCORE ===
+	live_class_filters = {"member": user}
+	if date_filter:
+		live_class_filters.update(date_filter)
+
+	live_classes_attended = frappe.db.count("LMS Live Class Participant", filters=live_class_filters)
+	score_breakdown["live_class"] = live_classes_attended * LEADERBOARD_SCORE_WEIGHTS['live_class_attended']
+
+	# === CERTIFICATE SCORE ===
+	cert_filters = {"member": user}
+	if date_filter:
+		cert_filters.update(date_filter)
+
+	certificates = frappe.db.count("LMS Certificate", filters=cert_filters)
+	score_breakdown["certificates"] = certificates * LEADERBOARD_SCORE_WEIGHTS['certificate_earned']
+
+	# === REFERRAL SCORE ===
+	# 1. Referral Signups: Count from User doctype where referred_by = current user
+	signup_filters = {"referred_by": user}
+	if date_filter:
+		signup_filters.update(date_filter)
+	referral_signups = frappe.db.count("User", filters=signup_filters)
+
+	# 2. Referral Purchases: From LMS Referral Commission
+	purchase_filters = {"referrer": user}
+	if date_filter:
+		purchase_filters.update(date_filter)
+	referral_purchases = frappe.db.count("LMS Referral Commission", filters=purchase_filters)
+
+	score_breakdown["referrals"] = (
+		referral_signups * LEADERBOARD_SCORE_WEIGHTS['referral_signup'] +
+		referral_purchases * LEADERBOARD_SCORE_WEIGHTS['referral_purchase']
+	)
+
+	# === ENGAGEMENT SCORE ===
+	# Course reviews
+	review_filters = {"owner": user}
+	if date_filter:
+		review_filters.update(date_filter)
+	course_reviews = frappe.db.count("LMS Course Review", filters=review_filters)
+	score_breakdown["engagement"] = course_reviews * LEADERBOARD_SCORE_WEIGHTS['course_review']
+
+	# Calculate total
+	total_score = sum(score_breakdown.values())
+
+	# Get additional stats for display
+	enrollments = frappe.get_all(
+		"LMS Enrollment",
+		filters={"member": user},
+		fields=["progress"]
+	)
+	courses_completed = sum(1 for e in enrollments if flt(e.progress or 0) >= 100)
+	total_progress = sum(flt(e.progress or 0) for e in enrollments)
+
+	return {
+		"total_score": total_score,
+		"breakdown": score_breakdown,
+		"stats": {
+			"courses_completed": courses_completed,
+			"lessons_completed": lessons_completed,
+			"avg_progress": round(total_progress / len(enrollments), 1) if enrollments else 0,
+			"quizzes_completed": len(quiz_submissions),
+			"perfect_scores": perfect_scores,
+			"live_classes_attended": live_classes_attended,
+			"certificates": certificates,
+			"referrals": referral_signups + referral_purchases
+		}
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_leaderboard(category="student", period="season", page=1, limit=25):
+	"""
+	Get leaderboard ranking.
+
+	Parameters:
+	- category: "student" or "instructor"
+	- period: "season", "monthly", "weekly"
+	- page: Page number (1-indexed)
+	- limit: Users per page (default 25)
+
+	Returns:
+	- data: List of ranked users with scores
+	- total: Total users in category
+	- current_user_rank: Position of logged-in user
+	- current_user_score: Score of logged-in user
+	- season_info: Current season details (if period is 'season')
+	"""
+	page = cint(page) or 1
+	limit = cint(limit) or 25
+	offset = (page - 1) * limit
+
+	# Get excluded roles (including VIP Student)
+	excluded_roles = ["Administrator", "System Manager", "VIP Student"]
+
+	# Get users with excluded roles
+	excluded_users = frappe.get_all(
+		"Has Role",
+		filters={"role": ("in", excluded_roles), "parenttype": "User"},
+		fields=["parent"],
+		distinct=True
+	)
+	excluded_user_list = [u.parent for u in excluded_users]
+
+	# Determine role filter based on category
+	if category == "instructor":
+		role_filter = "Course Creator"
+	else:
+		role_filter = "LMS Student"
+
+	# Get users with the specified role
+	users_with_role = frappe.get_all(
+		"Has Role",
+		filters={"role": role_filter, "parenttype": "User"},
+		fields=["parent"],
+		distinct=True
+	)
+
+	# Filter out excluded users and get user details
+	valid_users = []
+	for u in users_with_role:
+		if u.parent not in excluded_user_list and u.parent != "Guest":
+			user_doc = frappe.db.get_value(
+				"User",
+				u.parent,
+				["name", "full_name", "user_image", "username"],
+				as_dict=True
+			)
+			if user_doc and user_doc.get("name"):
+				valid_users.append(user_doc)
+
+	# Calculate scores for all valid users
+	user_scores = []
+	for user in valid_users:
+		try:
+			score_data = calculate_user_score(user.name, period, category)
+			user_scores.append({
+				"user": user.name,
+				"full_name": user.full_name or user.name,
+				"user_image": user.user_image,
+				"username": user.username,
+				"score": score_data["total_score"],
+				"breakdown": score_data["breakdown"],
+				"stats": score_data["stats"]
+			})
+		except Exception:
+			continue
+
+	# Sort by score descending
+	user_scores.sort(key=lambda x: x["score"], reverse=True)
+
+	# Add ranks
+	for i, user in enumerate(user_scores):
+		user["rank"] = i + 1
+
+	# Get current user's rank
+	current_user = frappe.session.user
+	current_user_rank = None
+	current_user_score = None
+	current_user_data = None
+
+	for user in user_scores:
+		if user["user"] == current_user:
+			current_user_rank = user["rank"]
+			current_user_score = user["score"]
+			current_user_data = user
+			break
+
+	# Paginate results
+	paginated_data = user_scores[offset:offset + limit]
+
+	# Get season info
+	season_info = get_current_season() if period == "season" else None
+
+	# Get hall of fame (rank #1 from previous seasons) - placeholder
+	hall_of_fame = []
+
+	return {
+		"data": paginated_data,
+		"total": len(user_scores),
+		"page": page,
+		"limit": limit,
+		"total_pages": (len(user_scores) + limit - 1) // limit,
+		"current_user_rank": current_user_rank,
+		"current_user_score": current_user_score,
+		"current_user_data": current_user_data,
+		"season_info": season_info,
+		"hall_of_fame": hall_of_fame
+	}
+
+
+@frappe.whitelist()
+def get_user_stats(user=None):
+	"""
+	Get detailed stats for a user.
+
+	Parameters:
+	- user: Email of user (default: current user)
+
+	Returns:
+	- user_info: name, email, image, rank
+	- score_breakdown: points per category
+	- learning: courses, lessons, progress
+	- quizzes: scores, perfect, completed
+	- certificates: list with details
+	- referrals: count, earnings
+	"""
+	if not user:
+		user = frappe.session.user
+
+	# Get user info
+	user_doc = frappe.db.get_value(
+		"User",
+		user,
+		["name", "full_name", "user_image", "username", "referral_code"],
+		as_dict=True
+	)
+
+	if not user_doc:
+		frappe.throw(_("User not found"))
+
+	# Calculate score
+	score_data = calculate_user_score(user, period="all", category="student")
+
+	# Get detailed stats
+	# Learning details
+	enrollments = frappe.get_all(
+		"LMS Enrollment",
+		filters={"member": user},
+		fields=["course", "progress", "creation"]
+	)
+
+	learning_details = []
+	for e in enrollments:
+		course_title = frappe.db.get_value("LMS Course", e.course, "title")
+		learning_details.append({
+			"course": e.course,
+			"title": course_title,
+			"progress": flt(e.progress or 0)
+		})
+
+	# Quiz details
+	quiz_submissions = frappe.get_all(
+		"LMS Quiz Submission",
+		filters={"member": user},
+		fields=["quiz", "score", "score_out_of", "creation"],
+		order_by="creation desc",
+		limit=10
+	)
+
+	quiz_details = []
+	for q in quiz_submissions:
+		quiz_title = frappe.db.get_value("LMS Quiz", q.quiz, "title")
+		percentage = round((q.score / q.score_out_of * 100) if q.score_out_of else 0, 1)
+		quiz_details.append({
+			"quiz": q.quiz,
+			"title": quiz_title,
+			"score": q.score,
+			"score_out_of": q.score_out_of,
+			"percentage": percentage,
+			"date": q.creation
+		})
+
+	# Certificates
+	certificates = frappe.get_all(
+		"LMS Certificate",
+		filters={"member": user},
+		fields=["name", "course", "creation"]
+	)
+
+	cert_details = []
+	for c in certificates:
+		title = None
+		if c.course:
+			title = frappe.db.get_value("LMS Course", c.course, "title")
+		cert_details.append({
+			"name": c.name,
+			"title": title,
+			"date": c.creation
+		})
+
+	# Referrals
+	referrals = frappe.get_all(
+		"LMS Referral Commission",
+		filters={"referrer": user},
+		fields=["commission_amount", "payout_status", "creation"]
+	)
+
+	total_earnings = sum([r.commission_amount for r in referrals])
+	unpaid_earnings = sum([r.commission_amount for r in referrals if r.payout_status == "Unpaid"])
+
+	# Get user rank
+	leaderboard = get_leaderboard(category="student", period="all", page=1, limit=1000)
+	user_rank = None
+	for entry in leaderboard.get("data", []):
+		if entry["user"] == user:
+			user_rank = entry["rank"]
+			break
+
+	return {
+		"user_info": {
+			"name": user_doc.name,
+			"full_name": user_doc.full_name,
+			"user_image": user_doc.user_image,
+			"username": user_doc.username,
+			"referral_code": user_doc.referral_code,
+			"rank": user_rank
+		},
+		"total_score": score_data["total_score"],
+		"score_breakdown": score_data["breakdown"],
+		"stats": score_data["stats"],
+		"learning": {
+			"courses": learning_details,
+			"total_courses": len(learning_details),
+			"completed_courses": len([c for c in learning_details if c["progress"] >= 100]),
+			"avg_progress": round(sum([c["progress"] for c in learning_details]) / len(learning_details), 1) if learning_details else 0
+		},
+		"quizzes": {
+			"recent": quiz_details,
+			"total_completed": len(quiz_submissions),
+			"avg_score": round(sum([q["percentage"] for q in quiz_details]) / len(quiz_details), 1) if quiz_details else 0,
+			"perfect_scores": len([q for q in quiz_details if q["percentage"] == 100])
+		},
+		"certificates": {
+			"list": cert_details,
+			"total": len(cert_details)
+		},
+		"referrals": {
+			"total": len(referrals),
+			"total_earnings": total_earnings,
+			"unpaid_earnings": unpaid_earnings
+		}
+	}
+

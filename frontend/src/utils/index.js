@@ -497,10 +497,10 @@ const getSidebarItems = () => {
 					activeFor: ['Jobs', 'JobDetail'],
 				},
 				{
-					label: 'Statistics',
-					icon: 'TrendingUp',
-					to: 'Statistics',
-					activeFor: ['Statistics'],
+					label: 'Leaderboard',
+					icon: 'Trophy',
+					to: 'Leaderboard',
+					activeFor: ['Leaderboard'],
 				},
 				{
 					label: 'Contact Us',

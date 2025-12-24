@@ -70,6 +70,33 @@ Custom certificate PDF generator that:
 -   `getSidebarLinks()` - Returns grouped sidebar links for role-based navigation
 -   `formatRupiah()` - Indonesian Rupiah currency formatting
 
+### 5. 🔒 Require Sequential Learning
+
+**Location:** `lms/lms/utils.py`, `frontend/src/pages/Lesson.vue`, `frontend/src/components/CourseOutline.vue`
+
+Optional course setting to enforce linear learning progression:
+
+-   **Backend:** Logic to check if the previous lesson is completed before allowing access to the next one.
+-   **Frontend:** Display Lock icons in the course outline and a dedicated "Locked" state in the lesson view with a bypass prevention mechanism.
+-   **Configurable:** Per-course setting via Frappe Desk ("Require Sequential Learning" checkbox).
+
+### 6. 🏆 Enhanced Leaderboard & Scoring System
+
+**Location:** `lms/lms/api.py`, `frontend/src/components/leaderboard/UserStatsPanel.vue`
+
+A completely overhauled scoring system for better accuracy and user engagement:
+
+-   **Accurate Scoring:** Replaced rough estimates with actual database counts from `LMS Course Progress`.
+-   **New Scoring Matrix:**
+    -   **Learning:** 50 points per completed lesson.
+    -   **Quizzes:** 100 points per quiz + 50 bonus for perfect score.
+    -   **Live Class:** 150 points per attendance (New Category).
+    -   **Certificates:** 200 points per certificate.
+    -   **Referrals:** 25 points for referral signup, 150 points for referral purchase.
+    -   **Engagement:** 30 points per course review.
+-   **Progressive UI:** Progress bars now target a milestone of **100,000 points**, giving a long-term sense of achievement.
+-   **Visual Updates:** Added Live Class category with custom icons and consistent color palettes.
+
 ---
 
 ## 🖥️ Server Requirements
@@ -186,6 +213,29 @@ lms/
 ---
 
 ## 📝 Changelog
+
+### v2.45.0 (2025-12-25)
+
+#### 🏆 Enhanced Leaderboard & Scoring
+
+-   ✅ **Accurate Scoring:** Replaced lesson completion estimates with actual database verification.
+-   ✅ **Live Class Integration:** Added "Live Class" category to scoring (150 pts) and UI breakdown.
+-   ✅ **New Scoring Matrix:** Updated weights for Quizzes, Certificates, and Referrals.
+-   ✅ **Progressive UI:** User stats progress bar now targets 100,000 points milestone.
+-   ✅ **UI Consistency:** Added "Video" icons for Live Class categories.
+
+#### 🔒 Learning Progression
+
+-   ✅ **Require Sequential Learning:** New feature allowing instructors to enforce linear lesson completion.
+-   ✅ **Visual Locking:** Added Frappe-native lock icons to `CourseOutline.vue`.
+-   ✅ **Secure Access:** Redirects users to an "Access Denied" page with a "Go to Previous Lesson" button if they try to skip lessons.
+
+#### 🔧 UI/UX & Fixes
+
+-   ✅ **Label Correction:** Renamed "Disable Self Learning" to **"Disable Self Enrollment"** across the system (DB, Desk UI, and Frontend) to accurately reflect its function.
+-   ✅ **Season Calculation:** Fixed a bug where seasons were calculated incorrectly; now based on a robust 3-month iteration from a base date.
+
+---
 
 ### v2.44.0 (2024-12-23)
 
